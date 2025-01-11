@@ -1,14 +1,6 @@
 def system_utility(agent, action, system):
-    """System-level scoring."""
-    original_action = agent.current_action
     agent.current_action = action
-
-    score = system.system_score()
-
-    # Revert the agent's action after calculation
-    agent.current_action = original_action
-
-    return score
+    return system.system_score()
 
 def log_system_properties(system, trial_num):
     print(f"\nTrial {trial_num+1} beginning with following properties:\n")
