@@ -67,15 +67,15 @@ def test_system_score_edge_case_no_agents():
     # Initialize a system with no agents
     system = System(resources=resources, agents=[], m=1, utility_function=system_utility)
 
-    # No resources are covered, so score should be 0
+    # No properties are covered, so score should be 0
     assert system.system_score() == 0
 
 def test_system_score_edge_case_no_resources():
     action_set = {frozenset()}
     agents = [Agent(agent_id=i, action_set=action_set) for i in range(2)]
 
-    # Initialize a system with no resources
+    # Initialize a system with no properties
     system = System(resources=[], agents=agents, m=1, utility_function=system_utility)
 
-    # No resources exist, so score should be 0
+    # No properties exist, so score should be 0
     assert system.system_score() == 0

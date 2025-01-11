@@ -5,6 +5,7 @@ def system_utility(agent, action, system):
 def log_system_properties(system, trial_num):
     print(f"\nTrial {trial_num+1} beginning with following properties:\n")
 
+    print(f"Max Cover {system.M}")
     print(f"Num Resources: {len(system.resources)}")
     out_list = []
     for resource in system.resources:
