@@ -1,7 +1,7 @@
 import random
 
 def best_response(system, max_iterations=1000):
-    print(f"\nBeginning simulation with {max_iterations} iterations using best_response algorithm.\n")
+    print(f"Beginning simulation with {max_iterations} iterations using best_response algorithm.")
     iteration = 0
 
     while iteration < max_iterations:

@@ -1,18 +1,22 @@
+from app.utils.logger import Logger
+
+logger = Logger.get_logger()
+
 def system_utility(agent, action, system):
     agent.current_action = action
     return system.system_score()
 
 def log_system_properties(system, trial_num):
-    print(f"\nTrial {trial_num+1} beginning with following properties:\n")
+    logger.info(f"Trial {trial_num+1}")
+    logger.info(f"Max Cover {system.M}")
+    logger.info(f"Num Resources: {len(system.resources)}")
 
-    print(f"Max Cover {system.M}")
-    print(f"Num Resources: {len(system.resources)}")
     out_list = []
     for resource in system.resources:
         out_list.append((resource.id, resource.value))
-    print(f"Resource List: {out_list}")
+    logger.info(f"Resource List: {out_list}")
 
-    print(f"Num Agents: {len(system.agents)}")
+    logger.info(f"Num Agents: {len(system.agents)}")
     for agent in system.agents:
         out_list = []
         for subset in agent.action_set:
@@ -21,16 +25,15 @@ def log_system_properties(system, trial_num):
                 output_tuple = (resource.id, resource.value)
                 sub_list.append(output_tuple)
             out_list.append(sub_list)
-        print(f"Agent {agent.id} Action Set: {out_list}")
+        logger.info(f"Agent {agent.id} Action Set: {out_list}")
 
 def log_agent_allocation(system):
-    print(f"\nSimulation terminated with system score {system.system_score()}\n")
-    print(f"Agent actions:\n")
+    logger.info(f"Simulation score {system.system_score()}")
     for agent in system.agents:
         out_list = []
         for resource in agent.current_action:
             out_list.append((resource.id, resource.value))
 
-        print(f"Agent {agent.id} Covers: {out_list}")
+        logger.info(f"Agent {agent.id} Covers: {out_list}")
 
-    print(f"System resouce coverage: {system.resource_coverage}")
+    logger.info(f"System resource coverage: {system.resource_coverage}")

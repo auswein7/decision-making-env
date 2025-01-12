@@ -6,6 +6,9 @@ from app.core.algorithms import best_response
 from app.core.utils import system_utility
 from app.core.utils import log_system_properties
 from app.core.utils import log_agent_allocation
+from app.utils.logger import Logger
+
+logger = Logger.get_logger()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range, m):
     resources = [Resource(i, random.randint(1, 10)) for i in range(num_resources)]
@@ -31,7 +34,7 @@ def run_experiments(num_trials, num_resources, num_agents, m):
         results.append(system.system_score())
         log_agent_allocation(system)
 
-    print(f"\nAverage System Score: {sum(results) / num_trials}")
+    logger.info(f"Average System Score: {sum(results) / num_trials}")
 
 
 
