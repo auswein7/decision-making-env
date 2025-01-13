@@ -1,6 +1,13 @@
 import logging
 
 class Logger:
+    """
+    Logger singleton class. Allows for instantiation in any file. Any logging exports to
+    'experiment.log' file.
+
+    Attributes:
+        _instance: reference to logger instance
+    """
     _instance = None
 
     @classmethod

@@ -1,4 +1,15 @@
 class System:
+    """
+    System objects are created per trial. Each system holds all needed data to represent a maximum n-times
+    set cover problem.
+
+    Attributes:
+        resources: resources in the simulation
+        agents: agents in the simulation
+        M: maximum agent coverage needed to claim a resource
+        utility_function:
+        resource_coverage: final coverage count of each resource
+    """
     def __init__(self, resources, agents, m, utility_function):
         self.resources = resources
         self.agents = agents

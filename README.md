@@ -1,2 +1,3 @@
 # decision-making-env
-Decision making environment for agents
+
+Decision-making environment for agents. 

@@ -21,7 +21,7 @@ def test_system_initialization():
     assert len(system.agents) == 2
     assert system.M == 2
 
-def test_system_score_basic():
+def test_system_score_default():
     resources = [Resource(i, value=10) for i in range(3)]
 
     # Create mock agents with set actions
@@ -40,7 +40,7 @@ def test_system_score_basic():
     # System score should only count resource 1 (covered by both agents)
     assert system.system_score() == 10
 
-def test_system_score_with_m_greater_than_2():
+def test_system_score_m_greater_than_2():
     resources = [Resource(i, value=10) for i in range(3)]
 
     # Create mock agents with set actions
@@ -61,7 +61,7 @@ def test_system_score_with_m_greater_than_2():
 
     assert system.system_score() == 10
 
-def test_system_score_edge_case_no_agents():
+def test_system_score_no_agents():
     resources = [Resource(i, value=10) for i in range(3)]
 
     # Initialize a system with no agents
@@ -70,7 +70,7 @@ def test_system_score_edge_case_no_agents():
     # No properties are covered, so score should be 0
     assert system.system_score() == 0
 
-def test_system_score_edge_case_no_resources():
+def test_system_score_no_resources():
     action_set = {frozenset()}
     agents = [Agent(agent_id=i, action_set=action_set) for i in range(2)]
 

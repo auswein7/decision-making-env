@@ -1,6 +1,15 @@
 import random
 
 def best_response(system, max_iterations=1000):
+    """
+    Randomly select agents from system, evaluate the best action for the agent.
+    The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
+    overall system score.
+
+    :param system: object containing all experiment data
+    :param max_iterations: iteration count for given system, each new trial will reset this value
+    :return: none
+    """
     print(f"Beginning simulation with {max_iterations} iterations using best_response algorithm.")
     iteration = 0
 
