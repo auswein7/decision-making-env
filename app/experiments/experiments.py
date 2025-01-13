@@ -4,13 +4,14 @@ from app.models.agent import Agent
 from app.core.system import System
 from app.core.algorithms import best_response
 from app.core.utils import system_utility
-from app.core.utils import log_system_properties
-from app.core.utils import log_agent_allocation
+from app.utils.common_utils import log_system_properties
+from app.utils.common_utils import log_agent_allocation
 from app.utils.logger import Logger
 
 logger = Logger.get_logger()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range, m):
+    ##TODO::Pass through properties file
     resources = [Resource(i, random.randint(1, 10)) for i in range(num_resources)]
     agents = []
 
@@ -28,6 +29,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range, m):
 def run_experiments(num_trials, num_resources, num_agents, m):
     results = []
     for trial_num in range(num_trials):
+        ##TODO::Pass through properties file
         system = generate_problem_instance(num_resources, num_agents, (1, 4), m)
         log_system_properties(system, trial_num)
         best_response(system)
