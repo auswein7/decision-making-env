@@ -1,5 +1,7 @@
 import argparse
 import configparser
+from xmlrpc.client import boolean
+
 
 def read_app_properties():
     """
@@ -69,6 +71,13 @@ def read_app_properties():
         type=int,
         default=int(config['DEFAULT'].get('agent_subset_len_ub', "")),
         help="The upper bound on how many resources can be covered in one subset of agent action"
+    )
+
+    parser.add_argument(
+        "--load_from_config",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('load_from_config', "False").lower() in ['true', '1', 'yes'],
+        help="Boolean to load from predefined json, or generate random system"
     )
 
     args = parser.parse_args()

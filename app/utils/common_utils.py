@@ -1,6 +1,43 @@
+import json
+
+from app.core.system import System
+from app.core.utils import system_utility
+from app.models.resource import Resource
+from app.models.agent import Agent
+
 from app.utils.logger import Logger
 
 logger = Logger.get_logger()
+
+def load_scenario_from_json(file_path):
+    """
+    Load scenario data from the scenarios directory
+
+    :param file_path: path to scenario json file
+    :return: sys
+    """
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+        resources = [
+            Resource(r["id"], r["value"])
+            for r in data["resources"]
+        ]
+
+        agents = [
+            Agent(a["id"], (a["action_set"]))
+            for a in data["agents"]
+        ]
+
+        # convert agent action set to frozenset of resources
+        for agent in agents:
+            for i, subset in enumerate(agent.action_set):
+                agent.action_set[i] = [r for r in resources if r.id in subset]
+            agent.action_set = {frozenset(action) for action in agent.action_set}
+
+        m = data["system"]["m"]
+        sys = System(resources=resources, agents=agents, m=m, utility_function=system_utility)
+        return sys
 
 def log_system_properties(system, trial_num):
     """

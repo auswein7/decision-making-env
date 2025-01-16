@@ -3,6 +3,9 @@ from app.models.resource import Resource
 from app.models.agent import Agent
 from app.core.system import System
 from app.core.utils import system_utility
+from app.utils.common_utils import load_scenario_from_json
+
+JSON_PATH = "../scenarios/test_scenario.json"
 
 def test_system_initialization():
     resources = [Resource(i, value=10) for i in range(5)]
@@ -20,6 +23,13 @@ def test_system_initialization():
     assert len(system.resources) == 5
     assert len(system.agents) == 2
     assert system.M == 2
+
+def test_system_initialization_from_json():
+    system = load_scenario_from_json(JSON_PATH)
+
+    assert len(system.resources) == 10
+    assert len(system.agents) == 5
+    assert system.M == 3
 
 def test_system_score_default():
     resources = [Resource(i, value=10) for i in range(3)]

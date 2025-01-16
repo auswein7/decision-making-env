@@ -7,10 +7,12 @@ from app.core.system import System
 from app.core.algorithms import best_response
 from app.core.utils import system_utility
 
+from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import log_system_properties
 from app.utils.common_utils import log_agent_allocation
 from app.utils.logger import Logger
 
+JSON_PATH = "scenarios/test_scenario.json"
 logger = Logger.get_logger()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range, m, resource_val_lb, resource_val_ub):
@@ -36,7 +38,6 @@ def generate_problem_instance(num_resources, num_agents, action_size_range, m, r
 
     return System(resources, agents, m, system_utility)
 
-
 def run_experiments(args):
     """
     Parse arguments from CMD or app.props, create a system, run the experiments, log info.
@@ -52,6 +53,14 @@ def run_experiments(args):
     resource_val_ub = args.resource_val_ub
     agent_subset_len_lb = args.agent_subset_len_lb
     agent_subset_len_ub = args.agent_subset_len_ub
+    load_from_config = bool(args.load_from_config)
+
+    if load_from_config:
+        system = load_scenario_from_json(JSON_PATH)
+        log_system_properties(system, 0)
+        best_response(system)
+        log_agent_allocation(system)
+        return
 
     results = []
     for trial_num in range(num_trials):
@@ -65,7 +74,3 @@ def run_experiments(args):
         log_agent_allocation(system)
 
     logger.info(f"Average System Score: {sum(results) / num_trials}")
-
-
-
-
