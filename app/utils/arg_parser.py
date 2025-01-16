@@ -1,7 +1,5 @@
 import argparse
 import configparser
-from xmlrpc.client import boolean
-
 
 def read_app_properties():
     """
