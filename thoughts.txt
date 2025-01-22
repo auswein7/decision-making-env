@@ -30,11 +30,14 @@ ADDITIONS BEFORE NEXT MEETING
 
     5. Make sure the python max() is not deterministically breaking ties when choosing agent action
 
+    6. Add algorithm to be used to evaluate system score/agent action to the passed scenario.json
+        - need to parse additional data from json in handler
+
     APP.PROPS PARAMS
 
-    6. Beta: for approximate best response algo
-    7. Threshold score: save the system configuration if the score is above the threshold
-    8. Generate visualizations: boolean, enable graphical output or not
+    7. Beta: for approximate best response algo
+    8. Threshold score: save the system configuration if the score is above the threshold
+    9. Generate visualizations: boolean, enable graphical output or not
 
 
 FUTURE EXPERIMENT THOUGHTS
