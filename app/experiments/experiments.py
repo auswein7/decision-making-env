@@ -12,6 +12,7 @@ from app.utils.common_utils import log_system_properties
 from app.utils.common_utils import log_agent_allocation
 from app.utils.logger import Logger
 
+#TODO: Make this more permanent, maybe add a consts file
 JSON_PATH = "scenarios/test_scenario.json"
 logger = Logger.get_logger()
 
@@ -22,6 +23,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range, m, r
     :param num_resources: number of resources to add to system
     :param num_agents: number of agents to add to system
     :param action_size_range: range of values representing the size of each subset of resources
+    :param m: maximum cover
     :param resource_val_lb: lower bound of the value of any resource
     :param resource_val_ub: upper bound of the value of any resource
     :return: newly created system given parameters
@@ -69,6 +71,7 @@ def run_experiments(args):
                                            m, resource_val_lb, resource_val_ub)
 
         log_system_properties(system, trial_num)
+        #TODO:: Will have to change once other algorithms are added
         best_response(system)
         results.append(system.system_score())
         log_agent_allocation(system)

@@ -21,5 +21,6 @@
     "system": {
         "m": 3,
         "utility_function": "default_utility"
-    }
+    },
+    "algorithm": "best_response"
 }

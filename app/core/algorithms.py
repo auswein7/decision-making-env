@@ -25,9 +25,15 @@ def best_response(system, max_iterations=1000):
             for action in agent.action_set
         }
 
-        # Choose the action with the highest payoff (breaking ties randomly)
+        # Choose the action with the highest payoff
         best_action = max(action_scores, key=lambda a: action_scores[a])
         agent.current_action = set(best_action)
 
         if iteration % 10 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
+
+def approximate_best_response(system, max_iterations=1000):
+    return 0
+
+def ilp_response(system, max_iterations=1000):
+    return 0

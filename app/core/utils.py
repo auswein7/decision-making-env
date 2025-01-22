@@ -1,5 +1,6 @@
 # add more utility functions to this file in the future to represent more advanced agent action allocation
 
+#TODO:: Rework this file, either remove or clean up the interaction of this function with System
 def system_utility(agent, action, system):
     """
     Update the agent's current action with the current candidate action.

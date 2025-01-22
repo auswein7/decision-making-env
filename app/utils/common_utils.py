@@ -10,6 +10,7 @@ from app.utils.logger import Logger
 logger = Logger.get_logger()
 
 def load_scenario_from_json(file_path):
+    # TODO:: algorithm to use should now be passed in a scenario file, parse here
     """
     Load scenario data from the scenarios directory
 

@@ -78,5 +78,7 @@ def read_app_properties():
         help="Boolean to load from predefined json, or generate random system"
     )
 
+    #TODO:: add beta, threshold save score, generate_visualizations
+
     args = parser.parse_args()
     return args
