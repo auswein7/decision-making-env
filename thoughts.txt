@@ -62,4 +62,15 @@ ESSENTIAL QUESTIONS
     5. What parameters will make this algorithm perform best given this system configuration?
     6. How does the size of the agents action sets affect overall system score? (1 -> all)
 
+THOUGHTS FROM WORKSHOP
+
+    1. Define two functions
+        - w(|a|_r): "the maximum cover", input is how many agents are covering a resource
+            if w(2) = 1, the value of the resource is its initial value if two agents are covering it
+            if w(2) = 2, the value of the resource is doubled if two agents are covering it
+            if w(1) = 0, the value of the resource is zero if only one agent is covering it
+        - f(|a|_r): applies to system objective function
+            Look more into what this function is doing
+
+
 
