@@ -5,7 +5,6 @@ from app.models.agent import Agent
 
 from app.core.system import System
 from app.core.algorithms import function_map
-from app.core.algorithms import brute_force
 from app.core.utils import system_utility
 
 from app.utils.common_utils import load_scenario_from_json
@@ -55,17 +54,15 @@ def run_experiments(args):
     """
     load_from_config = bool(args.load_from_config)
     algorithm = args.algorithm
-    save_threshold = args.save_threshold
 
     if load_from_config:
         system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
-        brute_force_score = brute_force(system)[0]
-        logger.info(f"Loaded configuration brute force score: {brute_force_score}")
         log_system_properties(system, 0)
         algo = function_map.get(algo_name)
-        score = algo(system)
-        if score > brute_force_score * save_threshold:
-            export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+
+        algo(system)
+
+        export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         log_agent_allocation(system)
         return
 
@@ -86,15 +83,12 @@ def run_experiments(args):
         system = generate_problem_instance(num_resources, num_agents, (agent_action_len_lb, agent_action_len_ub),
                                            (agent_subset_len_lb, agent_subset_len_ub),
                                            m, (resource_val_lb, resource_val_ub))
-        # TODO:: brute force takes far to long to run as agents and resource count increases
-        # brute_force_score = brute_force(system)[0]
-        brute_force_score = 0
-        logger.info(f"Trial {trial_num} brute force score: {brute_force_score}")
         log_system_properties(system, trial_num)
         algo = function_map.get(algorithm)
-        score = algo(system)
-        if score > brute_force_score * save_threshold:
-            export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+
+        algo(system)
+        
+        export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         results.append(system.system_score())
         log_agent_allocation(system)
 

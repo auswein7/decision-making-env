@@ -34,6 +34,7 @@ def best_response(system, max_iterations=1000, output_gif="simulation.gif"):
         }
 
         # Choose the best action deterministically
+        #TODO: randomly select if given two actions with the same score
         best_action = max(action_scores, key=lambda a: action_scores[a])
         agent.current_action = set(best_action)
 
@@ -56,7 +57,7 @@ def best_response(system, max_iterations=1000, output_gif="simulation.gif"):
 
     return system.system_score()
 
-def approximate_best_response(system, max_iterations=1000, beta=0.5, output_gif="simulation.gif"):
+def approximate_best_response(system, max_iterations=250, beta=0.5, output_gif="simulation.gif"):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
     based on passed beta value. Create a probability distribution using these scaled values. Select the
@@ -96,6 +97,7 @@ def approximate_best_response(system, max_iterations=1000, beta=0.5, output_gif=
         }
 
         # Select an action probabilistically based on scaled scores
+        # TODO:: add ability to create different probaility distrubtions
         total_scaled_score = sum(scaled_scores.values())
         if total_scaled_score > 0:
             probabilities = {action: score / total_scaled_score for action, score in scaled_scores.items()}
@@ -107,6 +109,9 @@ def approximate_best_response(system, max_iterations=1000, beta=0.5, output_gif=
 
             agent.current_action = set(selected_action)
         else:
+            # TODO: Could add design here, maybe select highest value resource in list so far, or the one that can
+            # be covered by the most other agents
+            # TODO: zeros tie break, implement some tie breaking rules
             agent.current_score = random.choice(list(agent.action_set))
 
         save_iteration_frame(system, iteration, frames_dir)

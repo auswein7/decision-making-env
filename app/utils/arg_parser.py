@@ -100,14 +100,6 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--save_threshold",
-        type=float,
-        default=float(config['DEFAULT'].get('save_threshold', "0.0")),
-        help="Save the current system configuration, and agent coverage given a score is within this threshold"
-             "compared to the optimal derived from brute force calculation"
-    )
-
-    parser.add_argument(
         "--generate_graphics",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('generate_graphics', "False").lower() in ['true', '1', 'yes'],
