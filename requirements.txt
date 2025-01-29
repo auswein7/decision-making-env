@@ -3,3 +3,8 @@ argparse
 configparser
 logging
 json
+itertools
+uuid
+os
+matplotlib
+imageio

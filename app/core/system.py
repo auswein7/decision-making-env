@@ -13,7 +13,7 @@ class System:
     def __init__(self, resources, agents, m, utility_function):
         self.resources = resources
         self.agents = agents
-        self.M = m                 # Minimum agents needed to cover a resource
+        self.M = m   # max-cover
         self.utility_function = utility_function
         self.resource_coverage = set()
 
