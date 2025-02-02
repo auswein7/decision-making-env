@@ -15,5 +15,3 @@ def system_utility(agent, action, system):
 
     agent.current_score = previous_action
     return sys_score
-
-
