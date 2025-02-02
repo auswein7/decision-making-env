@@ -120,3 +120,32 @@
 2025-01-29 16:46:43,737 sim_logger INFO   Agent 9 Covers: [(16, 5), (17, 8)]
 2025-01-29 16:46:43,737 sim_logger INFO   System resource coverage: {0: 1, 1: 1, 2: 1, 3: 0, 4: 2, 5: 0, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 0, 13: 0, 14: 3, 15: 1, 16: 1, 17: 3, 18: 0, 19: 1}
 2025-01-29 16:46:43,737 sim_logger INFO   Average System Score: 19.0
+2025-02-01 18:03:30,859 sim_logger INFO   Trial 1
+2025-02-01 18:03:30,859 sim_logger INFO   Max Cover 2
+2025-02-01 18:03:30,859 sim_logger INFO   Num Resources: 20
+2025-02-01 18:03:30,859 sim_logger INFO   Resource List: [(0, 3), (1, 4), (2, 10), (3, 3), (4, 5), (5, 6), (6, 7), (7, 10), (8, 8), (9, 2), (10, 8), (11, 9), (12, 3), (13, 3), (14, 2), (15, 5), (16, 8), (17, 7), (18, 3), (19, 4)]
+2025-02-01 18:03:30,859 sim_logger INFO   Num Agents: 10
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 0 Action Set: [[(0, 3), (4, 5)], [(13, 3), (10, 8)], [(15, 5), (0, 3)], [(15, 5), (4, 5)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 1 Action Set: [[(13, 3), (19, 4)], [(5, 6), (16, 8)], [(1, 4), (4, 5)], [(3, 3), (11, 9)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 2 Action Set: [[(13, 3), (0, 3)], [(15, 5), (0, 3)], [(0, 3), (6, 7)], [(11, 9), (8, 8)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 3 Action Set: [[(9, 2), (7, 10)], [(10, 8), (16, 8)], [(15, 5), (12, 3)], [(17, 7), (6, 7)], [(1, 4), (11, 9)], [(9, 2), (14, 2)], [(9, 2), (6, 7)], [(14, 2), (10, 8)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 4 Action Set: [[(2, 10), (12, 3)], [(19, 4), (6, 7)], [(7, 10), (12, 3)], [(8, 8), (0, 3)], [(11, 9), (2, 10)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 5 Action Set: [[(11, 9), (13, 3)], [(2, 10), (3, 3)], [(2, 10), (8, 8)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 6 Action Set: [[(1, 4), (5, 6)], [(0, 3), (10, 8)], [(0, 3), (16, 8)], [(8, 8), (10, 8)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 7 Action Set: [[(11, 9), (16, 8)], [(19, 4), (10, 8)], [(4, 5), (7, 10)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 8 Action Set: [[(9, 2), (12, 3)], [(8, 8), (14, 2)], [(15, 5), (11, 9)], [(11, 9), (6, 7)], [(9, 2), (15, 5)]]
+2025-02-01 18:03:30,859 sim_logger INFO   Agent 9 Action Set: [[(16, 8), (6, 7)], [(11, 9), (18, 3)], [(3, 3), (1, 4)], [(15, 5), (6, 7)]]
+2025-02-01 18:03:55,129 sim_logger INFO   Simulation results saved to app/out/21f2e15d-add8-4e6c-a7fc-eb1971e81286.json
+2025-02-01 18:03:55,129 sim_logger INFO   Simulation score 44
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 0 Covers: [(15, 5), (4, 5)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 1 Covers: [(1, 4), (4, 5)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 2 Covers: [(0, 3), (6, 7)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 3 Covers: [(9, 2), (7, 10)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 4 Covers: [(8, 8), (0, 3)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 5 Covers: [(2, 10), (8, 8)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 6 Covers: [(1, 4), (5, 6)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 7 Covers: [(11, 9), (16, 8)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 8 Covers: [(11, 9), (6, 7)]
+2025-02-01 18:03:55,129 sim_logger INFO   Agent 9 Covers: [(16, 8), (6, 7)]
+2025-02-01 18:03:55,129 sim_logger INFO   System resource coverage: {0: 2, 1: 2, 2: 1, 3: 0, 4: 2, 5: 1, 6: 3, 7: 1, 8: 2, 9: 1, 10: 0, 11: 2, 12: 0, 13: 0, 14: 0, 15: 1, 16: 2, 17: 0, 18: 0, 19: 0}
+2025-02-01 18:03:55,129 sim_logger INFO   Average System Score: 44.0
