@@ -1,5 +1,6 @@
 .idea/
 frames/
+out/
 __pycache__/
 thoughts.txt
 .DS_Store
