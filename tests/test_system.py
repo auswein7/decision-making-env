@@ -25,7 +25,7 @@ def test_system_initialization():
     assert system.M == 2
 
 def test_system_initialization_from_json():
-    system = load_scenario_from_json(JSON_PATH)
+    system = load_scenario_from_json(JSON_PATH)[0]
 
     assert len(system.resources) == 10
     assert len(system.agents) == 5
