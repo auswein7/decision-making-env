@@ -4,12 +4,14 @@ from itertools import product
 
 from app.utils.common_utils import generate_animation
 
-def best_response(system=None, max_iterations=50, generate_graphics=False):
+def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     """
     Randomly select agents from system, evaluate the best action for the agent.
     The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
     overall system score.
 
+    :param trial_num: current simulation trial
+    :param data_collector: class to save data from simulation and export to json
     :param generate_graphics: boolean to enable graphics generation
     :param system: object containing all experiment data
     :param max_iterations: iteration count for given system, each new trial will reset this value
@@ -18,8 +20,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False):
     print(f"Beginning simulation with {max_iterations} iterations using best_response algorithm.")
     iteration = 0
 
-    # lists for rendering simulation gif files
-    iterations = []
+    # list for rendering simulation gif files
     systems = []
 
     while iteration < max_iterations:
@@ -40,9 +41,12 @@ def best_response(system=None, max_iterations=50, generate_graphics=False):
         agent.current_action = set(best_action)
 
         if generate_graphics:
-            curr_sys = deepcopy(system)
-            systems.append(curr_sys)
-            iterations.append(iteration)
+            systems.append(deepcopy(system))
+
+        if data_collector is not None:
+            data_collector.log(trial_num, iteration, deepcopy(system))
+        else:
+            print("No reference to data collector passed, data will not be saved.")
 
         # Print progress every 10 iterations
         if iteration % 10 == 0:
@@ -53,12 +57,14 @@ def best_response(system=None, max_iterations=50, generate_graphics=False):
 
     return system.system_score()
 
-def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False):
+def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False, data_collector=None, trial_num=0):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
     based on passed beta value. Create a probability distribution using these scaled values. Select the
     most likely action from the probability distribution.
 
+    :param trial_num: current simulation trial
+    :param data_collector: class to save data from simulation and export to json
     :param generate_graphics: boolean to enable graphics generation
     :param beta: passed in value to weight resource values
                  if beta == 0: random choice, if beta == 1: best_response
@@ -69,8 +75,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
     print(f"Beginning simulation with {max_iterations} iterations using approximate_best_response algorithm.")
     iteration = 0
 
-    # lists for rendering simulation gif files
-    iterations = []
+    # list for rendering simulation gif files
     systems = []
 
     while iteration < max_iterations:
@@ -111,9 +116,12 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             agent.current_action = random.choice(list(agent.action_set))
 
         if generate_graphics:
-            curr_sys = deepcopy(system)
-            systems.append(curr_sys)
-            iterations.append(iteration)
+            systems.append(deepcopy(system))
+
+        if data_collector is not None:
+            data_collector.log(trial_num, iteration, deepcopy(system))
+        else:
+            print("No reference to data collector passed, data will not be saved.")
 
         if iteration % 10 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
@@ -123,13 +131,13 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
     return system.system_score()
 
-def ilp_response(system=None, max_iterations=50, generate_graphics=False):
+def ilp_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
-def logit_response(system=None, max_iterations=50, generate_graphics=False):
+def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
-def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False):
+def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
 def brute_force(system=None):

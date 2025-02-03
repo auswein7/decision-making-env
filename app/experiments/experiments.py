@@ -7,6 +7,7 @@ from app.models.agent import Agent
 from app.core.system import System
 from app.core.algorithms import function_map
 from app.core.utils import system_utility
+from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import log_system_properties
@@ -16,6 +17,7 @@ from app.utils.logger import Logger
 from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
 
 logger = Logger.get_logger()
+data_collector = DataCollector()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
                               action_subset_size_range, m, resource_val_range):
@@ -61,12 +63,13 @@ def run_experiments(args):
         system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
         log_system_properties(system, 0)
 
-        #TODO:: Call here
         call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                       generate_graphics=generate_graphics)
+                       generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
 
         export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         log_agent_allocation(system)
+
+        data_collector.summarize()
         return
 
     num_trials = args.num_trials
@@ -82,17 +85,21 @@ def run_experiments(args):
 
     results = []
     for trial_num in range(num_trials):
-        system = generate_problem_instance(num_resources, num_agents, (agent_action_len_lb, agent_action_len_ub),
+        system = generate_problem_instance(num_resources, num_agents,
+                                           (agent_action_len_lb, agent_action_len_ub),
                                            (agent_subset_len_lb, agent_subset_len_ub),
                                            m, (resource_val_lb, resource_val_ub))
+
         log_system_properties(system, trial_num)
 
-        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta, generate_graphics=generate_graphics)
+        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                       generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
         
         export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         results.append(system.system_score())
         log_agent_allocation(system)
 
+    data_collector.summarize()
     logger.info(f"Average System Score: {sum(results) / num_trials}")
 
 def call_algorithm(algorithm, **kwargs):
