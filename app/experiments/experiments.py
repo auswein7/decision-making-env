@@ -1,4 +1,5 @@
 import random
+import inspect
 
 from app.models.resource import Resource
 from app.models.agent import Agent
@@ -12,10 +13,8 @@ from app.utils.common_utils import log_system_properties
 from app.utils.common_utils import log_agent_allocation
 from app.utils.common_utils import export_scenario_to_json
 from app.utils.logger import Logger
+from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
 
-#TODO: Make this more permanent, maybe add a consts file
-JSON_LOAD_PATH = "scenarios/test_scenario.json"
-JSON_SAVE_PATH = "app/out"
 logger = Logger.get_logger()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
@@ -37,7 +36,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
 
     for i in range(num_agents):
         action_set = set()
-        # TODO:: Refactor, if an action subset is identical to one already in action_set, it will not be added
+        # TODO: if an action subset is identical to one already in action_set, it will not be added, refactor
         while len(action_set) < random.randint(*action_size_range):
             action = set(random.sample(resources, random.randint(*action_subset_size_range)))
             action_set.add(frozenset(action))
@@ -54,19 +53,22 @@ def run_experiments(args):
     """
     load_from_config = bool(args.load_from_config)
     algorithm = args.algorithm
+    iter_per_trial = args.iterations_per_trial
+    beta = args.beta
+    generate_graphics = args.generate_graphics
 
     if load_from_config:
         system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
         log_system_properties(system, 0)
-        algo = function_map.get(algo_name)
 
-        algo(system)
+        #TODO:: Call here
+        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                       generate_graphics=generate_graphics)
 
         export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         log_agent_allocation(system)
         return
 
-    # TODO:: clean this up, find a better way to pass in the params to this func
     num_trials = args.num_trials
     num_resources = args.num_resources
     num_agents = args.num_agents
@@ -84,12 +86,21 @@ def run_experiments(args):
                                            (agent_subset_len_lb, agent_subset_len_ub),
                                            m, (resource_val_lb, resource_val_ub))
         log_system_properties(system, trial_num)
-        algo = function_map.get(algorithm)
 
-        algo(system)
+        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta, generate_graphics=generate_graphics)
         
         export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         results.append(system.system_score())
         log_agent_allocation(system)
 
     logger.info(f"Average System Score: {sum(results) / num_trials}")
+
+def call_algorithm(algorithm, **kwargs):
+    algo = function_map.get(algorithm)
+    if not algo:
+        raise ValueError(f"Algorithm '{algorithm}' not found in function_map")
+
+    sig = inspect.signature(algo)
+    filtered_args = {k: v for k, v in kwargs.items() if k in sig.parameters}
+
+    return algo(**filtered_args)

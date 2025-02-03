@@ -23,6 +23,13 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--iterations_per_trial",
+        type=int,
+        default=int(config['DEFAULT'].get('iterations_per_trial', "0")),
+        help="The number of iterations to run in each trial"
+    )
+
+    parser.add_argument(
         "--num_resources",
         type=int,
         default=int(config['DEFAULT'].get('num_resources', "0")),

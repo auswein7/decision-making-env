@@ -1,27 +1,26 @@
-import os
 import random
-import imageio. v2 as imageio
+from copy import deepcopy
 from itertools import product
 
-from app.utils.common_utils import save_iteration_frame
+from app.utils.common_utils import generate_animation
 
-def best_response(system, max_iterations=1000, output_gif="simulation.gif"):
+def best_response(system=None, max_iterations=50, generate_graphics=False):
     """
     Randomly select agents from system, evaluate the best action for the agent.
     The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
     overall system score.
 
+    :param generate_graphics: boolean to enable graphics generation
     :param system: object containing all experiment data
     :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param output_gif: output file name
     :return: system score after running simulation
     """
     print(f"Beginning simulation with {max_iterations} iterations using best_response algorithm.")
-
-    frames_dir = "frames"
-    os.makedirs(frames_dir, exist_ok=True)
-
     iteration = 0
+
+    # lists for rendering simulation gif files
+    iterations = []
+    systems = []
 
     while iteration < max_iterations:
         iteration += 1
@@ -34,48 +33,45 @@ def best_response(system, max_iterations=1000, output_gif="simulation.gif"):
         }
 
         # Choose the best action deterministically
-        #TODO: randomly select if given two actions with the same score
-        best_action = max(action_scores, key=lambda a: action_scores[a])
+        max_score = max(action_scores.values())
+        best_actions = [a for a in action_scores if action_scores[a] == max_score]
+        best_action = random.choice(best_actions)
+
         agent.current_action = set(best_action)
 
-        save_iteration_frame(system, iteration, frames_dir)
+        if generate_graphics:
+            curr_sys = deepcopy(system)
+            systems.append(curr_sys)
+            iterations.append(iteration)
 
         # Print progress every 10 iterations
         if iteration % 10 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
-    frame_files = sorted([os.path.join(frames_dir, f) for f in os.listdir(frames_dir) if f.endswith(".png")])
-    images = [imageio.imread(frame) for frame in frame_files]
-    imageio.mimsave(output_gif, images, duration=0.3)
-
-    print(f"GIF saved as {output_gif}")
-
-    for frame in frame_files:
-        os.remove(frame)
-
-    os.removedirs(frames_dir)
+    if generate_graphics:
+        generate_animation(systems=systems)
 
     return system.system_score()
 
-def approximate_best_response(system, max_iterations=250, beta=0.5, output_gif="simulation.gif"):
+def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
     based on passed beta value. Create a probability distribution using these scaled values. Select the
     most likely action from the probability distribution.
 
+    :param generate_graphics: boolean to enable graphics generation
     :param beta: passed in value to weight resource values
                  if beta == 0: random choice, if beta == 1: best_response
     :param system: object containing all experiment data
     :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param output_gif: output file name
     :return: system score after running simulation
     """
     print(f"Beginning simulation with {max_iterations} iterations using approximate_best_response algorithm.")
-
-    frames_dir = "frames"
-    os.makedirs(frames_dir, exist_ok=True)
-
     iteration = 0
+
+    # lists for rendering simulation gif files
+    iterations = []
+    systems = []
 
     while iteration < max_iterations:
         iteration += 1
@@ -97,7 +93,7 @@ def approximate_best_response(system, max_iterations=250, beta=0.5, output_gif="
         }
 
         # Select an action probabilistically based on scaled scores
-        # TODO:: add ability to create different probaility distrubtions
+        # TODO:: add ability to create different probability distributions
         total_scaled_score = sum(scaled_scores.values())
         if total_scaled_score > 0:
             probabilities = {action: score / total_scaled_score for action, score in scaled_scores.items()}
@@ -112,32 +108,31 @@ def approximate_best_response(system, max_iterations=250, beta=0.5, output_gif="
             # TODO: Could add design here, maybe select highest value resource in list so far, or the one that can
             # be covered by the most other agents
             # TODO: zeros tie break, implement some tie breaking rules
-            agent.current_score = random.choice(list(agent.action_set))
+            agent.current_action = random.choice(list(agent.action_set))
 
-        save_iteration_frame(system, iteration, frames_dir)
+        if generate_graphics:
+            curr_sys = deepcopy(system)
+            systems.append(curr_sys)
+            iterations.append(iteration)
 
         if iteration % 10 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
-    # Create GIF from saved frames
-    frame_files = sorted([os.path.join(frames_dir, f) for f in os.listdir(frames_dir) if f.endswith(".png")])
-    images = [imageio.imread(frame) for frame in frame_files]
-    imageio.mimsave(output_gif, images, duration=0.3)
-
-    print(f"GIF saved as {output_gif}")
-
-    for frame in frame_files:
-        os.remove(frame)
-
-    os.removedirs(frames_dir)
+    if generate_graphics:
+        generate_animation(systems=systems)
 
     return system.system_score()
 
-
-def ilp_response(system, max_iterations=1000):
+def ilp_response(system=None, max_iterations=50, generate_graphics=False):
     return 0
 
-def brute_force(system):
+def logit_response(system=None, max_iterations=50, generate_graphics=False):
+    return 0
+
+def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False):
+    return 0
+
+def brute_force(system=None):
     original_sys = system
     agents = system.agents
 
@@ -161,6 +156,8 @@ def brute_force(system):
     for agent in system.agents:
         agent.current_action = set()
 
+    system = original_sys
+
     return best_score, best_actions
 
 # function map indexed by passed algorithm in application.properties
@@ -168,4 +165,6 @@ function_map = {
     "best_response": best_response,
     "approximate_best_response": approximate_best_response,
     "ilp_response": ilp_response,
+    "logit_response": logit_response,
+    "particle_swarm_response": particle_swarm_response
 }

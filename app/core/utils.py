@@ -1,4 +1,3 @@
-#TODO:: Rework this file, either remove or clean up the interaction of this function with System
 def system_utility(agent, action, system):
     """
     Test the system score with a potential agent action
@@ -13,5 +12,5 @@ def system_utility(agent, action, system):
 
     sys_score = system.system_score()
 
-    agent.current_score = previous_action
+    agent.current_action = previous_action
     return sys_score

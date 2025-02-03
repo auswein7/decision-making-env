@@ -7,4 +7,5 @@ itertools
 uuid
 os
 matplotlib
-imageio
+PIL
+inspect
