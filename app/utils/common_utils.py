@@ -1,5 +1,6 @@
-import json
 import uuid
+import json
+import pandas as pd
 import os
 import io
 import matplotlib.pyplot as plt
@@ -161,15 +162,9 @@ def log_system_properties(system, trial_num):
     logger.info(f"Resource List: {out_list}")
 
     logger.info(f"Num Agents: {len(system.agents)}")
-    for agent in system.agents:
-        out_list = []
-        for subset in agent.action_set:
-            sub_list = []
-            for resource in subset:
-                output_tuple = (resource.id, resource.value)
-                sub_list.append(output_tuple)
-            out_list.append(sub_list)
-        logger.info(f"Agent {agent.id} Action Set: {out_list}")
+    agent_data = format_agent_data(system.agents)
+    for a_id, action_set in agent_data.items():
+        logger.info(f"Agent {a_id} Action Set: {action_set}")
 
 def log_agent_allocation(system):
     """
@@ -188,3 +183,14 @@ def log_agent_allocation(system):
         logger.info(f"Agent {agent.id} Covers: {out_list}")
 
     logger.info(f"System resource coverage: {system.resource_coverage}")
+
+def format_agent_data(agents):
+    out = {agent.id: [] for agent in agents}
+    for agent in agents:
+        for subset in agent.action_set:
+            sub_list = []
+            for resource in subset:
+                output_tuple = (resource.id, resource.value)
+                sub_list.append(output_tuple)
+            out[agent.id].append(sub_list)
+    return out

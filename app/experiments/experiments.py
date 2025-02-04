@@ -16,7 +16,7 @@ from app.utils.common_utils import export_scenario_to_json
 from app.utils.logger import Logger
 from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
 
-logger = Logger.get_logger()
+# logger = Logger.get_logger()
 data_collector = DataCollector()
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
@@ -101,7 +101,7 @@ def run_experiments(args):
         log_agent_allocation(system)
 
     data_collector.summarize_results(file_names)
-    logger.info(f"Average System Score: {sum(results) / num_trials}")
+    # logger.info(f"Average System Score: {sum(results) / num_trials}")
 
 def call_algorithm(algorithm, **kwargs):
     algo = function_map.get(algorithm)

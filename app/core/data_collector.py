@@ -1,8 +1,10 @@
 import json
+import pprint
 from copy import deepcopy
 from typing import final
 
 from app.core.algorithms import brute_force
+from app.utils.common_utils import format_agent_data
 
 class DataCollector:
     def __init__(self):
@@ -60,30 +62,51 @@ class DataCollector:
             sim_score = final_system.system_score()
             coverage_map = final_system.resource_coverage
             resources = final_system.resources
+            formatted_resources = []
+            for resource in resources:
+                formatted_resources.append((resource.id, resource.value))
             max_cover = final_system.M
+            formatted_agents = format_agent_data(agents)
+
+            agent_actions = {}
+            for agent in agents:
+                res_list = []
+                for resource in agent.current_action:
+                    res_list.append((resource.id, resource.value))
+                agent_actions[agent.id] = res_list
 
             resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
             over_coverage_map = {resource.id:coverage_map[resource.id] for resource in resources if coverage_map[resource.id] > max_cover}
             overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
 
             sim_summary[trial] = ({
+                "max_cover": max_cover,
+                "num_agents": len(agents),
+                "agent_ids": [a.id for a in agents],
+                "action_sets": formatted_agents,
+                "agent_allocations": agent_actions,
+                "num_resources": len(resources),
+                "resource_values": formatted_resources,
+                "resource_coverage": coverage_map,
+                "resource_coverage_percentage": resources_covered / len(resources),
+                "over_covered_resources": over_coverage_map,
                 "max_possible_score": brute_force_score,
                 "simulation_score": sim_score,
-                "max_vs_attained_ratio": sim_score/brute_force_score,
-                "agent_action_counts": DataCollector.count_agent_actions(data=data),
-                "final_coverage_map": coverage_map,
-                "resource_coverage_percentage":resources_covered/len(final_system.resources),
-                "over_covered_resources": over_coverage_map,
+                "grade": str(sim_score/brute_force_score)+"%",
+                "agent_total_actions": DataCollector.count_agent_actions(data=data),
                 "resource_popularity":DataCollector.calculate_resource_popularity(data=data),
                 "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
                                                                                   coverage=coverage_map, M=max_cover),
-                "overhead_actions":overhead_actions,
+                "agent_overhead_actions":overhead_actions,
                 "agent_net_contribution":net_contributions,
                 "sys_convergence_time":0,
                 "output_file_UUID": file_names[trial-1]
             })
 
-        DataCollector.save_to_json(sim_summary)
+            output_str = "sim_results_file_" + file_names[trial-1][-36:]
+            # DataCollector.save_to_json(sim_summary, output_str)
+            with open(output_str, "w") as file:
+                json.dump(sim_summary, file, indent=4)
 
     @staticmethod
     def calculate_overhead_net_contribution(data):
@@ -170,5 +193,13 @@ class DataCollector:
 
     @staticmethod
     def save_to_json(data, filename="simulation_results.json"):
+        json_data = json.dumps(data)
+        formatted_json = pprint.pformat(json_data, sort_dicts=False)
+
         with open(filename, "w") as f:
-            json.dump(data, f, indent=4)
+            f.write(formatted_json)
+
+    @staticmethod
+    def format_json(json_string, indent=2):
+        data = json.loads(json_string)
+        return json.dumps(data, indent=indent)

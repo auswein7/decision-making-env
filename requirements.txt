@@ -1,6 +1,7 @@
 pytest
 argparse
 configparser
+pandas
 logging
 json
 itertools
