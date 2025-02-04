@@ -17,6 +17,7 @@ class System:
         self.utility_function = utility_function
         self.resource_coverage = set()
 
+    # TODO:: this function is getting called a lot, should not have to recompute, refactor to be a member var
     def system_score(self):
         """Compute the system-level score."""
         resource_coverage = {resource.id: 0 for resource in self.resources}

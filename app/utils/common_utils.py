@@ -53,7 +53,7 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     :param system: experiment system configuration
     :param algorithm: Chosen algorithm to run experiment
     :param file_path: path to scenario json file
-    :return: None
+    :return: filename: name of created scenario json file
     """
     filename = os.path.join(file_path, f"{uuid.uuid4()}.json")
 
@@ -86,6 +86,7 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
         json.dump(simulation_data, json_file, indent=4)
 
     logger.info(f"Simulation results saved to {filename}")
+    return filename
 
 def generate_animation(systems=None, output_gif="simulation.gif"):
     """

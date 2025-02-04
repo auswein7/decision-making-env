@@ -66,10 +66,10 @@ def run_experiments(args):
         call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                        generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
 
-        export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+        sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         log_agent_allocation(system)
 
-        data_collector.summarize()
+        data_collector.summarize_results(file_names=sim_json)
         return
 
     num_trials = args.num_trials
@@ -84,6 +84,7 @@ def run_experiments(args):
     agent_subset_len_ub = args.agent_subset_len_ub
 
     results = []
+    file_names = []
     for trial_num in range(num_trials):
         system = generate_problem_instance(num_resources, num_agents,
                                            (agent_action_len_lb, agent_action_len_ub),
@@ -95,11 +96,11 @@ def run_experiments(args):
         call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                        generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
         
-        export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+        file_names.append(export_scenario_to_json(system, algorithm, JSON_SAVE_PATH))
         results.append(system.system_score())
         log_agent_allocation(system)
 
-    data_collector.summarize()
+    data_collector.summarize_results(file_names)
     logger.info(f"Average System Score: {sum(results) / num_trials}")
 
 def call_algorithm(algorithm, **kwargs):

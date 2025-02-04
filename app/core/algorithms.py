@@ -44,7 +44,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system))
+            data_collector.log(trial_num+1, iteration, deepcopy(system))
         else:
             print("No reference to data collector passed, data will not be saved.")
 
@@ -119,7 +119,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system))
+            data_collector.log(trial_num+1, iteration, deepcopy(system))
         else:
             print("No reference to data collector passed, data will not be saved.")
 
