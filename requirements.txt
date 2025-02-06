@@ -10,3 +10,4 @@ os
 matplotlib
 PIL
 inspect
+networkx

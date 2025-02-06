@@ -4,6 +4,10 @@ from itertools import product
 
 from app.utils.common_utils import generate_animation
 
+#TODO:: define stopping criteria for algos
+# 1. system has converged (system score has not changed for the last N iterations)
+# 2. agents have not change state for the last N iterations (tune N)
+
 def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     """
     Randomly select agents from system, evaluate the best action for the agent.
@@ -44,7 +48,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num+1, iteration, deepcopy(system))
+            data_collector.log(trial_num+1, iteration, deepcopy(system), "best_response")
         else:
             print("No reference to data collector passed, data will not be saved.")
 
@@ -119,11 +123,11 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num+1, iteration, deepcopy(system))
+            data_collector.log(trial_num+1, iteration, deepcopy(system), "approximate_best_response")
         else:
             print("No reference to data collector passed, data will not be saved.")
 
-        if iteration % 10 == 0:
+        if iteration % 1 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     if generate_graphics:

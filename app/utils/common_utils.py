@@ -1,9 +1,10 @@
 import uuid
 import json
-import pandas as pd
 import os
 import io
+
 import matplotlib.pyplot as plt
+import networkx as nx
 from PIL import Image
 
 from app.core.system import System
@@ -56,7 +57,13 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     :param file_path: path to scenario json file
     :return: filename: name of created scenario json file
     """
-    filename = os.path.join(file_path, f"{uuid.uuid4()}.json")
+    uuid_str = uuid.uuid4()
+
+    # visualize a system per configuration saved
+    visualze_system_configuration(system, uuid_str, file_path)
+
+    file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.json")
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
     resources_data = [{"id": resource.id, "value": resource.value} for resource in system.resources]
 
@@ -83,11 +90,55 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
         "algorithm": algorithm
     }
 
-    with open(filename, 'w') as json_file:
+    with open(file_name, 'w') as json_file:
         json.dump(simulation_data, json_file, indent=4)
 
-    logger.info(f"Simulation results saved to {filename}")
-    return filename
+    logger.info(f"Simulation results saved to {file_name}")
+    return file_name
+
+# TODO:: if I have an agent, highlight the resources that it covers
+# TODO:: put agents on one side of render, resources on the other
+def visualze_system_configuration(system=None, uuid_str=None, file_path="app/out"):
+    file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.png")
+    os.makedirs(os.path.dirname(file_name), exist_ok=True)
+
+    g = nx.DiGraph()
+
+    agent_color = "blue"
+    uncovered_resource_color = "green"
+    subsets = {}
+
+    for agent in system.agents:
+        node_id = f"A{agent.id}"
+        g.add_node(node_id, color=agent_color, label=f"A{agent.id}")
+        subsets[node_id] = 1  # agents -> subset 1
+
+    for resource in system.resources:
+        node_id = f"R{resource.id}"
+        g.add_node(node_id, color=uncovered_resource_color, label=f"R{resource.id}\nVal: {resource.value}")
+        subsets[node_id] = 0  # resources -> subset 2
+
+    for agent in system.agents:
+        for i, action_set in enumerate(agent.action_set):
+            for resource in action_set:
+                g.add_edge(f"A{agent.id}", f"R{resource.id}", label=f"{agent.id}: Action Set {i + 1}")
+
+    nx.set_node_attributes(g, subsets, "subset")
+
+    # alter k val to change spacing
+    pos = nx.spring_layout(g, k=1.5, seed=42)
+
+    colors = [g.nodes[n]["color"] for n in g.nodes]
+    labels = {n: g.nodes[n]["label"] for n in g.nodes}
+    edge_labels = {(u, v): d["label"] for u, v, d in g.edges(data=True) if "label" in d}
+
+    plt.figure(figsize=(14, 10))
+    nx.draw(g, pos, with_labels=True, labels=labels, node_color=colors, edge_color="gray", node_size=3000, font_size=14,
+            font_weight="bold")
+    nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=10)
+
+    plt.title("System Configuration")
+    plt.savefig(file_name)
 
 def generate_animation(systems=None, output_gif="simulation.gif"):
     """
@@ -142,7 +193,6 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
     images[0].save(fp=output_gif, save_all=True, append_images=images[1:], duration=180, loop=0)
 
     print(f"GIF saved as {output_gif}")
-
 
 def log_system_properties(system, trial_num):
     """

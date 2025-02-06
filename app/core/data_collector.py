@@ -1,18 +1,23 @@
 import json
+import os
+import uuid
 from copy import deepcopy
 
 from app.core.algorithms import brute_force
 from app.utils.common_utils import format_agent_data
 
+from app.utils.constants import JSON_SAVE_PATH
+
 class DataCollector:
     def __init__(self):
         self.results = []
 
-    def log(self, trial, iteration, system):
+    def log(self, trial, iteration, system, algorithm):
         self.results.append({
             "trial": trial,
             "iteration": iteration,
-            "system": system
+            "system": system,
+            "algorithm": algorithm
         })
 
     # TODO:: Unit test!!
@@ -61,6 +66,7 @@ class DataCollector:
             resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
             over_coverage_map = {resource.id:coverage_map[resource.id] for resource in resources if coverage_map[resource.id] > max_cover}
             overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
+            best_system, best_iteration = DataCollector.get_best_system_config(data=data)
 
             sim_summary[trial] = ({
                 "max_cover": max_cover,
@@ -76,6 +82,9 @@ class DataCollector:
                 "max_possible_score": brute_force_score,
                 "simulation_score": sim_score,
                 "grade": str((sim_score/brute_force_score)*100)+"%",
+                "best_system_coverage": format_agent_data(best_system.agents),
+                "best_system_score": best_system.system_score(),
+                "iteration_of_best_system": best_iteration,
                 "agent_total_actions": DataCollector.count_agent_actions(data=data),
                 "resource_popularity":DataCollector.calculate_resource_popularity(data=data),
                 "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
@@ -83,13 +92,50 @@ class DataCollector:
                 "agent_overhead_actions":overhead_actions,
                 "agent_net_contribution":net_contributions,
                 "sys_convergence_time":0,
+                "sys_score_vs_beta": DataCollector.calculate_system_score_vs_beta(data=data),
                 "output_file_UUID": file_names[trial-1]
             })
 
-            output_str = "sim_results_file_" + file_names[trial-1][-36:]
+            filename = os.path.join(JSON_SAVE_PATH,"sim_summaries",self.results[0]["algorithm"],f"{uuid.uuid4()}.json")
+            DataCollector.export_to_json(sim_summary, filename)
 
-            with open(output_str, "w") as file:
-                json.dump(sim_summary, file, indent=4)
+    @staticmethod
+    def get_best_system_config(data):
+        max_score = 0
+        best_system_iter = None
+        for iteration, iteration_data in enumerate(data):
+            system = iteration_data["system"]
+            sim_score = system.system_score()
+            if max_score < sim_score:
+                max_score = sim_score
+                best_system_iter = system, iteration+1
+        return best_system_iter
+
+    #TODO::graph the system score over time vs beta
+    @staticmethod
+    def calculate_system_score_vs_beta(data):
+        # Calculated at the trial level
+        # contruct a dictionary of trial: average_system_score
+        avg_sys_score = 0
+        count = 0
+        for iteration_data in data:
+            system = iteration_data["system"]
+            avg_sys_score += system.system_score()
+            count += 1
+
+        avg_sys_score = avg_sys_score / count
+
+
+        return avg_sys_score
+
+    @staticmethod
+    def calculate_system_convergence(data):
+        # TODO:: lookup markov chain, converging to a stationary distribution
+        # average over past N iterations
+        state_map = {}
+
+        for iteration_data in data:
+            continue
 
     @staticmethod
     def calculate_overhead_net_contribution(data):
@@ -173,3 +219,9 @@ class DataCollector:
                 agent_actions[agent.id] = agent.current_action
 
         return agent_action_counts
+
+    @staticmethod
+    def export_to_json(data, file_name):
+        os.makedirs(os.path.dirname(file_name), exist_ok=True)
+        with open(file_name, "w") as file:
+            json.dump(data, file, indent=4)
