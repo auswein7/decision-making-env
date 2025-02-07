@@ -60,7 +60,7 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     uuid_str = uuid.uuid4()
 
     # visualize a system per configuration saved
-    visualze_system_configuration(system, uuid_str, file_path)
+    visualize_system_configuration(system, uuid_str, file_path)
 
     file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.json")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -96,9 +96,18 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     logger.info(f"Simulation results saved to {file_name}")
     return file_name
 
-# TODO:: if I have an agent, highlight the resources that it covers
+# TODO:: if I hover an agent, highlight the resources that it covers
 # TODO:: put agents on one side of render, resources on the other
-def visualze_system_configuration(system=None, uuid_str=None, file_path="app/out"):
+def visualize_system_configuration(system=None, uuid_str=None, file_path="app/out"):
+    """
+    Given a system configuration, render a graph representing the coverage of all agents in
+    the system.
+
+    :param file_path: save directory of this visualization
+    :param uuid_str: UUID of json file that will be exported in saved_models
+    :param system: initial system state in simulation
+    :return:
+    """
     file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.png")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
@@ -235,6 +244,12 @@ def log_agent_allocation(system):
     logger.info(f"System resource coverage: {system.resource_coverage}")
 
 def format_agent_data(agents):
+    """
+    Extract nested set data to export agent data to json files.
+
+    :param agents: list of agents
+    :return: formatted dictionary of agents -> resources
+    """
     out = {agent.id: [] for agent in agents}
     for agent in agents:
         for subset in agent.action_set:

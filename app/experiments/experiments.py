@@ -105,6 +105,13 @@ def run_experiments(args):
     logger.info(f"Average System Score: {sum(results) / num_trials}")
 
 def call_algorithm(algorithm, **kwargs):
+    """
+    Parse any needed parameters, call the target algorithm passing needed parameters.
+
+    :param algorithm: target algorithm to invoke, holds the name of the algorithm
+    :param kwargs: additional arguments to pass to the algorithm
+    :return: none
+    """
     algo = function_map.get(algorithm)
     if not algo:
         raise ValueError(f"Algorithm '{algorithm}' not found in function_map")

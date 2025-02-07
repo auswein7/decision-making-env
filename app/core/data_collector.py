@@ -9,10 +9,25 @@ from app.utils.common_utils import format_agent_data
 from app.utils.constants import JSON_SAVE_PATH
 
 class DataCollector:
+    """
+    DataCollector class to track all simulation data and compile into a simulation summary json.
+
+    Attributes:
+        results: data aggregated through scenario execution.
+    """
     def __init__(self):
         self.results = []
 
     def log(self, trial, iteration, system, algorithm):
+        """
+        Log the current state during every iteration. Called trial * iteration times throughout a run.
+
+        Attributes:
+            trial: trial number for this simulation.
+            iteration: iteration number for this trial.
+            system: configuration at trial/iteration
+            algorithm: algorithm used for entire simulation
+        """
         self.results.append({
             "trial": trial,
             "iteration": iteration,
@@ -22,6 +37,13 @@ class DataCollector:
 
     # TODO:: Unit test!!
     def summarize_results(self, file_names):
+        """
+        Compile all stored data in self.results.
+
+        Attributes:
+            file_names: list of file names to link simulation results to exported system json file.
+        """
+        # format results into dictionary, keyed by trial number
         results_by_trial = {}
         for entry in self.results:
             trial_num = entry["trial"]
@@ -29,16 +51,18 @@ class DataCollector:
                 results_by_trial[trial_num] = []
             results_by_trial[trial_num].append(entry)
 
-        # get trial data to construct sim_summary dict
+        # set up output data, keyed by trial number
         unique_trials = sorted(set(entry["trial"] for entry in self.results))
         sim_summary = {trial: {} for trial in unique_trials}
 
         for trial, data in results_by_trial.items():
+            # get the system from trial 1 iteration 1
             original_system = [entry for entry in data if entry["iteration"] == 1][0].get("system")
-            # clear any agent allocation, should already be cleared
+
             for agent in original_system.agents:
                 agent.current_action = set()
 
+            # get the system from final trial final iteration
             final_system = results_by_trial[trial][-1]["system"]
 
             brute_force_score = brute_force(deepcopy(original_system))[0]
@@ -56,6 +80,7 @@ class DataCollector:
             max_cover = final_system.M
             formatted_agents = format_agent_data(agents)
 
+            # pull the final state of agent decisions
             agent_actions = {}
             for agent in agents:
                 res_list = []
@@ -101,6 +126,14 @@ class DataCollector:
 
     @staticmethod
     def get_best_system_config(data):
+        """
+        Find the system configuration that achieved the maximum score over all iterations.
+
+        Attributes:
+            data: all iteration data for a single trial
+        Returns:
+            best_system_ter: iteration where the best system score was achieved
+        """
         max_score = 0
         best_system_iter = None
         for iteration, iteration_data in enumerate(data):
@@ -111,9 +144,17 @@ class DataCollector:
                 best_system_iter = system, iteration+1
         return best_system_iter
 
-    #TODO::graph the system score over time vs beta
+    #TODO:: FINSIH IMPLEMENTATION
     @staticmethod
     def calculate_system_score_vs_beta(data):
+        """
+        Construct x/y dimensional data comparing beta's effect on system score.
+
+        Attributes:
+            data: all iteration data for a single trial
+        Returns:
+            beta_sys_score: x/y dimensional data
+        """
         # Calculated at the trial level
         # contruct a dictionary of trial: average_system_score
         avg_sys_score = 0
@@ -128,17 +169,39 @@ class DataCollector:
 
         return avg_sys_score
 
+    # TODO:: FINISH IMPLEMENTATION
     @staticmethod
-    def calculate_system_convergence(data):
+    def calculate_system_convergence(data, conv_iter=0):
+        """
+        Determine if the agents choices, and system score have converged.
+
+        Attributes:
+            data: all iteration data for a single trial
+            conv_iter: iterations threshold, if system has not changed behavior in the past conv_iter iterations
+            the system has converged
+        Returns:
+            conv_iter: iteration of convergence, -1 if have not converged
+        """
         # TODO:: lookup markov chain, converging to a stationary distribution
         # average over past N iterations
         state_map = {}
 
         for iteration_data in data:
             continue
+        return -1
 
     @staticmethod
     def calculate_overhead_net_contribution(data):
+        """
+        Calculate how many agent actions did not increase overall score (overhead).
+        Calculate net contribution of agents. (sum of how all actions have changed overall system score)
+
+        Attributes:
+            data: all iteration data for a single trial
+        Returns:
+            agent_overhead_counts: how many actions did not increase overall system score
+            agent_net_contributions: agents net contribution to system score
+        """
         initial_system = data[0].get("system")
         agent_actions = {agent.id: agent.current_action for agent in initial_system.agents}
         agent_overhead_action_counts = {agent.id: 0 for agent in initial_system.agents}
@@ -167,6 +230,14 @@ class DataCollector:
     #TODO:Unit test!!
     @staticmethod
     def calculate_resource_popularity(data):
+        """
+        Find the count for how many times an agent has selected a resource.
+
+        Attributes:
+            data: all iteration data for a single trial
+        Returns:
+            resource_popularity: count per resource of how many times an agent chose to cover it.
+        """
         # get initial agent actions
         agent_actions = {agent.id: agent.current_action for agent in data[0].get("system").agents}
         resource_popularity = {r.id: 0 for r in data[0].get("system").resources}
@@ -190,6 +261,16 @@ class DataCollector:
     #TODO:Unit test!!
     @staticmethod
     def calculate_agent_contribution(agents, coverage, M):
+        """
+        Find the final contribution per agent given the resources they chose to cover.
+
+        Attributes:
+            agents: final state of the agents
+            coverage: final choices of the agents
+            M: max cover value for this simulation
+        Returns:
+            agent_action_contributions: value given to system score given agent allocations
+        """
         agent_action_contributions = {agent.id: 0 for agent in agents}
 
         for agent in agents:
@@ -201,6 +282,14 @@ class DataCollector:
     #TODO:: Unit test!!
     @staticmethod
     def count_agent_actions(data):
+        """
+        Calculate per agent how many times they have "changed their minds"
+
+        Attributes:
+            data: all iteration data for a single trial
+        Returns:
+            agent_action_counts: count of how many times the agent changed their current action
+        """
         # get initial agent actions
         agent_actions = {agent.id: agent.current_action for agent in data[0].get("system").agents}
         agent_action_counts = {agent.id: 0 for agent in data[0].get("system").agents}
@@ -222,6 +311,15 @@ class DataCollector:
 
     @staticmethod
     def export_to_json(data, file_name):
+        """
+        Find the final contribution per agent given the resources they chose to cover.
+
+        Attributes:
+            data: full simulation summary data
+            file_name: file name
+        Returns:
+            None
+        """
         os.makedirs(os.path.dirname(file_name), exist_ok=True)
         with open(file_name, "w") as file:
             json.dump(data, file, indent=4)

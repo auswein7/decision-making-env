@@ -4,7 +4,7 @@ from itertools import product
 
 from app.utils.common_utils import generate_animation
 
-#TODO:: define stopping criteria for algos
+#TODO:: define stopping criteria for trial
 # 1. system has converged (system score has not changed for the last N iterations)
 # 2. agents have not change state for the last N iterations (tune N)
 
@@ -114,8 +114,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
             agent.current_action = set(selected_action)
         else:
-            # TODO: Could add design here, maybe select highest value resource in list so far, or the one that can
-            # be covered by the most other agents
+            # TODO: Could add design here, maybe select highest value resource in list so far, or the one that can be covered by the most other agents
             # TODO: zeros tie break, implement some tie breaking rules
             agent.current_action = random.choice(list(agent.action_set))
 
@@ -145,6 +144,12 @@ def particle_swarm_response(system=None, max_iterations=50, generate_graphics=Fa
     return 0
 
 def brute_force(system=None):
+    """
+    Compute the higest attainable score from a given system configuration.
+
+    :param system: object containing all experiment data
+    :return: system score after brute force calculation
+    """
     original_sys = system
     agents = system.agents
 
