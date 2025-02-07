@@ -1,6 +1,10 @@
 import pytest
 from app.core.data_collector import DataCollector
 
+TRIAL_DATA = {
+
+}
+
 def test_summarize_results():
     return 0
 

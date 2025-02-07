@@ -143,6 +143,9 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
 def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
+def ant_colony_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
+    return 0
+
 def brute_force(system=None):
     """
     Compute the higest attainable score from a given system configuration.

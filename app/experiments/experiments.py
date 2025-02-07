@@ -24,7 +24,6 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     """
     Create resources, agents, and System.
 
-
     :param num_resources: number of resources to add to system
     :param num_agents: number of agents to add to system
     :param action_size_range: range for size of each action set
