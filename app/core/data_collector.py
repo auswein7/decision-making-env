@@ -8,6 +8,7 @@ from app.utils.common_utils import format_agent_data
 
 from app.utils.constants import JSON_SAVE_PATH
 
+
 class DataCollector:
     """
     DataCollector class to track all simulation data and compile into a simulation summary json.
@@ -15,6 +16,7 @@ class DataCollector:
     Attributes:
         results: data aggregated through scenario execution.
     """
+
     def __init__(self):
         self.results = []
 
@@ -66,7 +68,7 @@ class DataCollector:
             final_system = results_by_trial[trial][-1]["system"]
 
             brute_force_score = brute_force(deepcopy(original_system))[0]
-            if brute_force_score ==0:
+            if brute_force_score == 0:
                 print("No resources can be covered by this system")
                 return -1
 
@@ -89,7 +91,8 @@ class DataCollector:
                 agent_actions[agent.id] = res_list
 
             resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
-            over_coverage_map = {resource.id:coverage_map[resource.id] for resource in resources if coverage_map[resource.id] > max_cover}
+            over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
+                                 coverage_map[resource.id] > max_cover}
             overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
             best_system, best_iteration = DataCollector.get_best_system_config(data=data)
 
@@ -106,22 +109,23 @@ class DataCollector:
                 "over_covered_resources": over_coverage_map,
                 "max_possible_score": brute_force_score,
                 "simulation_score": sim_score,
-                "grade": str((sim_score/brute_force_score)*100)+"%",
+                "grade": str((sim_score / brute_force_score) * 100) + "%",
                 "best_system_coverage": format_agent_data(best_system.agents),
                 "best_system_score": best_system.system_score(),
                 "iteration_of_best_system": best_iteration,
                 "agent_total_actions": DataCollector.count_agent_actions(data=data),
-                "resource_popularity":DataCollector.calculate_resource_popularity(data=data),
+                "resource_popularity": DataCollector.calculate_resource_popularity(data=data),
                 "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
                                                                                   coverage=coverage_map, M=max_cover),
-                "agent_overhead_actions":overhead_actions,
-                "agent_net_contribution":net_contributions,
-                "sys_convergence_time":0,
+                "agent_overhead_actions": overhead_actions,
+                "agent_net_contribution": net_contributions,
+                "sys_convergence_time": 0,
                 "sys_score_vs_beta": DataCollector.calculate_system_score_vs_beta(data=data),
-                "output_file_UUID": file_names[trial-1]
+                "output_file_UUID": file_names[trial - 1]
             })
 
-            filename = os.path.join(JSON_SAVE_PATH,"sim_summaries",self.results[0]["algorithm"],f"{uuid.uuid4()}.json")
+            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", self.results[0]["algorithm"],
+                                    f"{uuid.uuid4()}.json")
             DataCollector.export_to_json(sim_summary, filename)
 
     @staticmethod
@@ -141,10 +145,10 @@ class DataCollector:
             sim_score = system.system_score()
             if max_score < sim_score:
                 max_score = sim_score
-                best_system_iter = system, iteration+1
+                best_system_iter = system, iteration + 1
         return best_system_iter
 
-    #TODO:: FINSIH IMPLEMENTATION
+    # TODO:: FINSIH IMPLEMENTATION
     @staticmethod
     def calculate_system_score_vs_beta(data):
         """
@@ -165,7 +169,6 @@ class DataCollector:
             count += 1
 
         avg_sys_score = avg_sys_score / count
-
 
         return avg_sys_score
 
@@ -227,7 +230,7 @@ class DataCollector:
 
         return agent_overhead_action_counts, agent_net_contributions
 
-    #TODO:Unit test!!
+    # TODO:Unit test!!
     @staticmethod
     def calculate_resource_popularity(data):
         """
@@ -258,7 +261,7 @@ class DataCollector:
 
         return resource_popularity
 
-    #TODO:Unit test!!
+    # TODO:Unit test!!
     @staticmethod
     def calculate_agent_contribution(agents, coverage, M):
         """
@@ -279,7 +282,7 @@ class DataCollector:
             agent_action_contributions[agent.id] = system_contribution
         return agent_action_contributions
 
-    #TODO:: Unit test!!
+    # TODO:: Unit test!!
     @staticmethod
     def count_agent_actions(data):
         """

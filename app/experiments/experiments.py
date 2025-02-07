@@ -19,6 +19,7 @@ from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
 logger = Logger.get_logger()
 data_collector = DataCollector()
 
+
 def generate_problem_instance(num_resources, num_agents, action_size_range,
                               action_subset_size_range, m, resource_val_range):
     """
@@ -45,6 +46,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
 
     return System(resources, agents, m, system_utility)
 
+
 # TODO:: pass in multiple algorithms through props, spin thread for each and run
 def run_experiments(args):
     """
@@ -63,8 +65,8 @@ def run_experiments(args):
         system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
         log_system_properties(system, 0)
 
-        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                       generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
+        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
 
         sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
         log_agent_allocation(system)
@@ -93,9 +95,9 @@ def run_experiments(args):
 
         log_system_properties(system, trial_num)
 
-        call_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                       generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
-        
+        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
+
         file_names.append(export_scenario_to_json(system, algorithm, JSON_SAVE_PATH))
         results.append(system.system_score())
         log_agent_allocation(system)
@@ -103,7 +105,8 @@ def run_experiments(args):
     data_collector.summarize_results(file_names)
     logger.info(f"Average System Score: {sum(results) / num_trials}")
 
-def call_algorithm(algorithm, **kwargs):
+
+def call_target_algorithm(algorithm, **kwargs):
     """
     Parse any needed parameters, call the target algorithm passing needed parameters.
 

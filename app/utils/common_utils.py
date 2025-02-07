@@ -16,6 +16,7 @@ from app.utils.logger import Logger
 
 logger = Logger.get_logger()
 
+
 def load_scenario_from_json(file_path):
     """
     Load scenario data from the scenarios directory
@@ -47,6 +48,7 @@ def load_scenario_from_json(file_path):
         m = data["system"]["m"]
         sys = System(resources=resources, agents=agents, m=m, utility_function=system_utility)
         return sys, algorithm
+
 
 def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     """
@@ -95,6 +97,7 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
 
     logger.info(f"Simulation results saved to {file_name}")
     return file_name
+
 
 # TODO:: if I hover an agent, highlight the resources that it covers
 # TODO:: put agents on one side of render, resources on the other
@@ -148,6 +151,7 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
 
     plt.title("System Configuration")
     plt.savefig(file_name)
+
 
 def generate_animation(systems=None, output_gif="simulation.gif"):
     """
@@ -203,6 +207,7 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
 
     print(f"GIF saved as {output_gif}")
 
+
 def log_system_properties(system, trial_num):
     """
     Export information to the 'experiment.log' file
@@ -211,7 +216,7 @@ def log_system_properties(system, trial_num):
     :param trial_num: current running trial
     :return: none
     """
-    logger.info(f"Trial {trial_num+1}")
+    logger.info(f"Trial {trial_num + 1}")
     logger.info(f"Max Cover {system.M}")
     logger.info(f"Num Resources: {len(system.resources)}")
 
@@ -224,6 +229,7 @@ def log_system_properties(system, trial_num):
     agent_data = format_agent_data(system.agents)
     for a_id, action_set in agent_data.items():
         logger.info(f"Agent {a_id} Action Set: {action_set}")
+
 
 def log_agent_allocation(system):
     """
@@ -242,6 +248,7 @@ def log_agent_allocation(system):
         logger.info(f"Agent {agent.id} Covers: {out_list}")
 
     logger.info(f"System resource coverage: {system.resource_coverage}")
+
 
 def format_agent_data(agents):
     """

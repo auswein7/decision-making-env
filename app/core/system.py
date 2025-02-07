@@ -10,10 +10,11 @@ class System:
         utility_function:
         resource_coverage: final coverage count of each resource
     """
+
     def __init__(self, resources, agents, m, utility_function):
         self.resources = resources
         self.agents = agents
-        self.M = m   # max-cover
+        self.M = m  # max-cover
         self.utility_function = utility_function
         self.resource_coverage = set()
 

@@ -1,6 +1,7 @@
 import argparse
 import configparser
 
+
 def read_app_properties():
     """
     Function allows all arguments for system creation to be passed through CMD. Default values are pulled from

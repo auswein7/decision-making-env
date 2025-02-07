@@ -4,7 +4,8 @@ from itertools import product
 
 from app.utils.common_utils import generate_animation
 
-#TODO:: define stopping criteria for trial
+
+# TODO:: define stopping criteria for trial
 # 1. system has converged (system score has not changed for the last N iterations)
 # 2. agents have not change state for the last N iterations (tune N)
 
@@ -48,7 +49,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num+1, iteration, deepcopy(system), "best_response")
+            data_collector.log(trial_num + 1, iteration, deepcopy(system), "best_response")
         else:
             print("No reference to data collector passed, data will not be saved.")
 
@@ -61,7 +62,9 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
 
     return system.system_score()
 
-def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False, data_collector=None, trial_num=0):
+
+def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False, data_collector=None,
+                              trial_num=0):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
     based on passed beta value. Create a probability distribution using these scaled values. Select the
@@ -122,7 +125,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num+1, iteration, deepcopy(system), "approximate_best_response")
+            data_collector.log(trial_num + 1, iteration, deepcopy(system), "approximate_best_response")
         else:
             print("No reference to data collector passed, data will not be saved.")
 
@@ -134,17 +137,22 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
     return system.system_score()
 
+
 def ilp_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
+
 
 def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
+
 def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
+
 def ant_colony_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
+
 
 def brute_force(system=None):
     """
@@ -179,6 +187,7 @@ def brute_force(system=None):
     system = original_sys
 
     return best_score, best_actions
+
 
 # function map indexed by passed algorithm in application.properties
 function_map = {

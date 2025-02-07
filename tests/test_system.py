@@ -7,6 +7,7 @@ from app.utils.common_utils import load_scenario_from_json
 
 JSON_PATH = "../scenarios/test_scenario.json"
 
+
 def test_system_initialization():
     resources = [Resource(i, value=10) for i in range(5)]
 
@@ -24,12 +25,14 @@ def test_system_initialization():
     assert len(system.agents) == 2
     assert system.M == 2
 
+
 def test_system_initialization_from_json():
     system = load_scenario_from_json(JSON_PATH)[0]
 
     assert len(system.resources) == 10
     assert len(system.agents) == 5
     assert system.M == 3
+
 
 def test_system_score_default():
     resources = [Resource(i, value=10) for i in range(3)]
@@ -50,6 +53,7 @@ def test_system_score_default():
     # System score should only count resource 1 (covered by both agents)
     assert system.system_score() == 10
 
+
 def test_system_score_m_greater_than_2():
     resources = [Resource(i, value=10) for i in range(3)]
 
@@ -65,11 +69,12 @@ def test_system_score_m_greater_than_2():
 
     agents[0].current_action = set(resources[:2])  # Covers 0 and 1
     agents[1].current_action = set(resources[1:])  # Covers 1 and 2
-    agents[2].current_action = set(resources)      # Covers 0, 1, and 2
+    agents[2].current_action = set(resources)  # Covers 0, 1, and 2
 
     system = System(resources=resources, agents=agents, m=3, utility_function=system_utility)
 
     assert system.system_score() == 10
+
 
 def test_system_score_no_agents():
     resources = [Resource(i, value=10) for i in range(3)]
@@ -79,6 +84,7 @@ def test_system_score_no_agents():
 
     # No properties are covered, so score should be 0
     assert system.system_score() == 0
+
 
 def test_system_score_no_resources():
     action_set = {frozenset()}

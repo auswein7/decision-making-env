@@ -1,5 +1,6 @@
 import logging
 
+
 class Logger:
     """
     Logger singleton class. Allows for instantiation in any file. Any logging exports to
@@ -17,8 +18,7 @@ class Logger:
             cls._instance.setLevel(logging.INFO)
             fh = logging.FileHandler(log_file)
             fh.setLevel(logging.INFO)
-            formatter = logging.Formatter('{asctime} {name} {levelname:6s} {message}',style='{')
+            formatter = logging.Formatter('{asctime} {name} {levelname:6s} {message}', style='{')
             fh.setFormatter(formatter)
             cls._instance.addHandler(fh)
         return cls._instance
-
