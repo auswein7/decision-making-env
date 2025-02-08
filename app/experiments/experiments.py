@@ -10,13 +10,9 @@ from app.core.utils import system_utility
 from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
-from app.utils.common_utils import log_system_properties
-from app.utils.common_utils import log_agent_allocation
 from app.utils.common_utils import export_scenario_to_json
-from app.utils.logger import Logger
 from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
 
-logger = Logger.get_logger()
 data_collector = DataCollector()
 
 
@@ -46,64 +42,59 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
 
     return System(resources, agents, m, system_utility)
 
-
-# TODO:: pass in multiple algorithms through props, spin thread for each and run
 def run_experiments(args):
     """
-    Parse arguments from CMD or app.props, create a system, run the experiments, log info.
+    Parse arguments from CMD or app.props, create a system, run the experiments.
 
     :param args: command line arguments, or default values from application.properties
     :return: none
     """
     load_from_config = bool(args.load_from_config)
-    algorithm = args.algorithm
+    algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
     generate_graphics = args.generate_graphics
 
-    if load_from_config:
-        system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
-        log_system_properties(system, 0)
+    #TODO:: debug this multi algorithm portion
+    # 1. Save directory for second listed algorithm goes to same as first listed algorithm
+    # 2. Dont create a new system for each of the algorithms, run same system for all
+    for algorithm in algorithms:
+        if load_from_config:
+            system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
 
-        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
+            call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                                  generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
 
-        sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
-        log_agent_allocation(system)
+            sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
 
-        data_collector.summarize_results(file_names=sim_json)
-        return
+            data_collector.summarize_results(file_names=sim_json)
+            return
 
-    num_trials = args.num_trials
-    num_resources = args.num_resources
-    num_agents = args.num_agents
-    m = args.max_cover
-    resource_val_lb = args.resource_val_lb
-    resource_val_ub = args.resource_val_ub
-    agent_action_len_lb = args.agent_action_len_lb
-    agent_action_len_ub = args.agent_action_len_ub
-    agent_subset_len_lb = args.agent_subset_len_lb
-    agent_subset_len_ub = args.agent_subset_len_ub
+        num_trials = args.num_trials
+        num_resources = args.num_resources
+        num_agents = args.num_agents
+        m = args.max_cover
+        resource_val_lb = args.resource_val_lb
+        resource_val_ub = args.resource_val_ub
+        agent_action_len_lb = args.agent_action_len_lb
+        agent_action_len_ub = args.agent_action_len_ub
+        agent_subset_len_lb = args.agent_subset_len_lb
+        agent_subset_len_ub = args.agent_subset_len_ub
 
-    results = []
-    file_names = []
-    for trial_num in range(num_trials):
-        system = generate_problem_instance(num_resources, num_agents,
-                                           (agent_action_len_lb, agent_action_len_ub),
-                                           (agent_subset_len_lb, agent_subset_len_ub),
-                                           m, (resource_val_lb, resource_val_ub))
+        file_names = []
+        for trial_num in range(num_trials):
+            system = generate_problem_instance(num_resources, num_agents,
+                                               (agent_action_len_lb, agent_action_len_ub),
+                                               (agent_subset_len_lb, agent_subset_len_ub),
+                                               m, (resource_val_lb, resource_val_ub))
 
-        log_system_properties(system, trial_num)
 
-        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
+            call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                                  generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
 
-        file_names.append(export_scenario_to_json(system, algorithm, JSON_SAVE_PATH))
-        results.append(system.system_score())
-        log_agent_allocation(system)
+            file_names.append(export_scenario_to_json(system, algorithm, JSON_SAVE_PATH))
 
-    data_collector.summarize_results(file_names)
-    logger.info(f"Average System Score: {sum(results) / num_trials}")
+        data_collector.summarize_results(file_names)
 
 
 def call_target_algorithm(algorithm, **kwargs):

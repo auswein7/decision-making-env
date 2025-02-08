@@ -95,7 +95,6 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
     with open(file_name, 'w') as json_file:
         json.dump(simulation_data, json_file, indent=4)
 
-    logger.info(f"Simulation results saved to {file_name}")
     return file_name
 
 

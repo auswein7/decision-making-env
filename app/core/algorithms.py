@@ -129,7 +129,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
         else:
             print("No reference to data collector passed, data will not be saved.")
 
-        if iteration % 1 == 0:
+        if iteration % 10 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     if generate_graphics:
