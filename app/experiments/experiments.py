@@ -17,10 +17,11 @@ data_collector = DataCollector()
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
-                              action_subset_size_range, m, resource_val_range):
+                              action_subset_size_range, m, resource_val_range, num_trials):
     """
     Create resources, agents, and System.
 
+    :param num_trials: number of trials, need to create a system object per trial
     :param num_resources: number of resources to add to system
     :param num_agents: number of agents to add to system
     :param action_size_range: range for size of each action set
@@ -29,18 +30,38 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     :param resource_val_range: range for resource value
     :return: newly created system given parameters
     """
-    resources = [Resource(i, random.randint(*resource_val_range)) for i in range(num_resources)]
-    agents = []
+    system_dict = {i: None for i in range(num_trials)}
 
-    for i in range(num_agents):
-        action_set = set()
-        # TODO: if an action subset is identical to one already in action_set, it will not be added, refactor
-        while len(action_set) < random.randint(*action_size_range):
-            action = set(random.sample(resources, random.randint(*action_subset_size_range)))
-            action_set.add(frozenset(action))
-        agents.append(Agent(i, action_set))
+    for trial in range(num_trials):
+        resources = [Resource(i, random.randint(*resource_val_range)) for i in range(num_resources)]
+        agents = []
+        for i in range(num_agents):
+            action_set = set()
+            while len(action_set) < random.randint(*action_size_range):
+                action = set(random.sample(resources, random.randint(*action_subset_size_range)))
+                action_set.add(frozenset(action))
+            agents.append(Agent(i, action_set))
 
-    return System(resources, agents, m, system_utility)
+        system_dict[trial] = System(resources, agents, m, system_utility)
+    return system_dict
+
+
+def run_from_json(args):
+    algorithms = args.algorithm.split(',')
+    iter_per_trial = args.iterations_per_trial
+    beta = args.beta
+    generate_graphics = args.generate_graphics
+
+    system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
+    for algorithm in algorithms:
+        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
+
+        sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+
+        data_collector.summarize_results(file_names=sim_json)
+        data_collector.clear_data()
+
 
 def run_experiments(args):
     """
@@ -49,52 +70,39 @@ def run_experiments(args):
     :param args: command line arguments, or default values from application.properties
     :return: none
     """
-    load_from_config = bool(args.load_from_config)
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
     generate_graphics = args.generate_graphics
+    num_trials = args.num_trials
+    num_resources = args.num_resources
+    num_agents = args.num_agents
+    m = args.max_cover
+    resource_val_lb = args.resource_val_lb
+    resource_val_ub = args.resource_val_ub
+    agent_action_len_lb = args.agent_action_len_lb
+    agent_action_len_ub = args.agent_action_len_ub
+    agent_subset_len_lb = args.agent_subset_len_lb
+    agent_subset_len_ub = args.agent_subset_len_ub
 
-    #TODO:: debug this multi algorithm portion
-    # 1. Save directory for second listed algorithm goes to same as first listed algorithm
-    # 2. Dont create a new system for each of the algorithms, run same system for all
+    system_dict = generate_problem_instance(num_resources, num_agents,
+                                            (agent_action_len_lb, agent_action_len_ub),
+                                            (agent_subset_len_lb, agent_subset_len_ub),
+                                            m, (resource_val_lb, resource_val_ub), num_trials)
+
+    # TODO:: Dont create a new system for each of the algorithms, run same system for all
+    save_file_uuid = ""
     for algorithm in algorithms:
-        if load_from_config:
-            system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
-
+        for trial, system in system_dict.items():
             call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                                  generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
+                                  generate_graphics=generate_graphics, data_collector=data_collector,
+                                  trial_num=trial+1)
 
-            sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+            # TODO:: currently saving models per algorithm, should only save once, and uuid should map correctly to all algorthms ran for system
+            save_file_uuid = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
 
-            data_collector.summarize_results(file_names=sim_json)
-            return
-
-        num_trials = args.num_trials
-        num_resources = args.num_resources
-        num_agents = args.num_agents
-        m = args.max_cover
-        resource_val_lb = args.resource_val_lb
-        resource_val_ub = args.resource_val_ub
-        agent_action_len_lb = args.agent_action_len_lb
-        agent_action_len_ub = args.agent_action_len_ub
-        agent_subset_len_lb = args.agent_subset_len_lb
-        agent_subset_len_ub = args.agent_subset_len_ub
-
-        file_names = []
-        for trial_num in range(num_trials):
-            system = generate_problem_instance(num_resources, num_agents,
-                                               (agent_action_len_lb, agent_action_len_ub),
-                                               (agent_subset_len_lb, agent_subset_len_ub),
-                                               m, (resource_val_lb, resource_val_ub))
-
-
-            call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                                  generate_graphics=generate_graphics, data_collector=data_collector, trial_num=trial_num)
-
-            file_names.append(export_scenario_to_json(system, algorithm, JSON_SAVE_PATH))
-
-        data_collector.summarize_results(file_names)
+        data_collector.summarize_results(save_file_uuid)
+        data_collector.clear_data()
 
 
 def call_target_algorithm(algorithm, **kwargs):

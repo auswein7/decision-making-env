@@ -37,13 +37,16 @@ class DataCollector:
             "algorithm": algorithm
         })
 
+    def clear_data(self):
+        self.results = []
+
     # TODO:: Unit test!!
-    def summarize_results(self, file_names):
+    def summarize_results(self, saved_file_uuid):
         """
         Compile all stored data in self.results.
 
         Attributes:
-            file_names: list of file names to link simulation results to exported system json file.
+            saved_file_uuid: json uuid to match results to system used
         """
         # format results into dictionary, keyed by trial number
         results_by_trial = {}
@@ -121,7 +124,7 @@ class DataCollector:
                 "agent_net_contribution": net_contributions,
                 "sys_convergence_time": 0,
                 "sys_score_vs_beta": DataCollector.calculate_system_score_vs_beta(data=data),
-                "output_file_UUID": file_names[trial - 1]
+                "output_file_UUID": saved_file_uuid
             })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", self.results[0]["algorithm"],
