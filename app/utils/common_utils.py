@@ -12,9 +12,7 @@ from app.core.utils import system_utility
 from app.models.resource import Resource
 from app.models.agent import Agent
 
-from app.utils.logger import Logger
-
-logger = Logger.get_logger()
+from app.utils.constants import JSON_SAVE_PATH
 
 
 def load_scenario_from_json(file_path):
@@ -50,12 +48,11 @@ def load_scenario_from_json(file_path):
         return sys, algorithm
 
 
-def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
+def export_scenario_to_json(system=None, file_path="app/out"):
     """
     Export a given random system to json file to be reloaded in future experiments.
 
     :param system: experiment system configuration
-    :param algorithm: Chosen algorithm to run experiment
     :param file_path: path to scenario json file
     :return: filename: name of created scenario json file
     """
@@ -89,7 +86,6 @@ def export_scenario_to_json(system=None, algorithm="", file_path="app/out"):
         "resources": resources_data,
         "agents": agents_data,
         "system": system_data,
-        "algorithm": algorithm
     }
 
     with open(file_name, 'w') as json_file:
@@ -206,47 +202,17 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
 
     print(f"GIF saved as {output_gif}")
 
+def generate_beta_sys_score_plot(x, y):
+    filename = os.path.join(JSON_SAVE_PATH,f"beta_vs_sys_score.png")
+    os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 
-def log_system_properties(system, trial_num):
-    """
-    Export information to the 'experiment.log' file
+    plt.figure()
+    plt.xlabel("System Score per trial")
+    plt.ylabel("Beta")
+    plt.title("Beta vs System Score")
+    plt.plot(x, y)
 
-    :param system: system for the given trial
-    :param trial_num: current running trial
-    :return: none
-    """
-    logger.info(f"Trial {trial_num + 1}")
-    logger.info(f"Max Cover {system.M}")
-    logger.info(f"Num Resources: {len(system.resources)}")
-
-    out_list = []
-    for resource in system.resources:
-        out_list.append((resource.id, resource.value))
-    logger.info(f"Resource List: {out_list}")
-
-    logger.info(f"Num Agents: {len(system.agents)}")
-    agent_data = format_agent_data(system.agents)
-    for a_id, action_set in agent_data.items():
-        logger.info(f"Agent {a_id} Action Set: {action_set}")
-
-
-def log_agent_allocation(system):
-    """
-    Export information to the 'experiment.log' file. This data is collected at the end of the run
-    and shows the actions the agents chose.
-
-    :param system: system state after trial has completed
-    :return: none
-    """
-    logger.info(f"Simulation score {system.system_score()}")
-    for agent in system.agents:
-        out_list = []
-        for resource in agent.current_action:
-            out_list.append((resource.id, resource.value))
-
-        logger.info(f"Agent {agent.id} Covers: {out_list}")
-
-    logger.info(f"System resource coverage: {system.resource_coverage}")
+    plt.savefig(filename)
 
 
 def format_agent_data(agents):

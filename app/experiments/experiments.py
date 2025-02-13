@@ -1,6 +1,8 @@
 import random
 import inspect
 
+import numpy as np
+
 from app.models.resource import Resource
 from app.models.agent import Agent
 
@@ -11,10 +13,8 @@ from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import export_scenario_to_json
-from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH
-
-data_collector = DataCollector()
-
+from app.utils.common_utils import generate_beta_sys_score_plot
+from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH, APPROX_BEST_RESPONSE, MAX_BETA, BETA_STEP_SIZE
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
                               action_subset_size_range, m, resource_val_range, num_trials):
@@ -52,14 +52,17 @@ def run_from_json(args):
     beta = args.beta
     generate_graphics = args.generate_graphics
 
+    # set up data collector
+    data_collector = DataCollector(algorithms=algorithms)
+
     system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
     for algorithm in algorithms:
-        call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+        call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                               generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
 
-        sim_json = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+        sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
 
-        data_collector.summarize_results(file_names=sim_json)
+        data_collector.summarize_results(saved_file_uuid=sim_json)
         data_collector.clear_data()
 
 
@@ -70,6 +73,12 @@ def run_experiments(args):
     :param args: command line arguments, or default values from application.properties
     :return: none
     """
+
+    analyze_beta = args.analyze_beta
+
+    if analyze_beta:
+        conduct_beta_analysis(args)
+
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
@@ -84,25 +93,63 @@ def run_experiments(args):
     agent_action_len_ub = args.agent_action_len_ub
     agent_subset_len_lb = args.agent_subset_len_lb
     agent_subset_len_ub = args.agent_subset_len_ub
+    sys_convergence = args.system_convergence_iter
 
     system_dict = generate_problem_instance(num_resources, num_agents,
                                             (agent_action_len_lb, agent_action_len_ub),
                                             (agent_subset_len_lb, agent_subset_len_ub),
                                             m, (resource_val_lb, resource_val_ub), num_trials)
 
-    # TODO:: Dont create a new system for each of the algorithms, run same system for all
-    save_file_uuid = ""
-    for algorithm in algorithms:
-        for trial, system in system_dict.items():
-            call_target_algorithm(algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+    # set up data collector
+    data_collector = DataCollector(algorithms=algorithms)
+    save_file_per_trial = {}
+
+    for trial, system in system_dict.items():
+        save_file_per_trial[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
+        for algorithm in algorithms:
+            call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                                   generate_graphics=generate_graphics, data_collector=data_collector,
-                                  trial_num=trial+1)
+                                  trial_num=trial, conv_iter=sys_convergence)
 
-            # TODO:: currently saving models per algorithm, should only save once, and uuid should map correctly to all algorthms ran for system
-            save_file_uuid = export_scenario_to_json(system, algorithm, JSON_SAVE_PATH)
+    data_collector.summarize_results(save_file_per_trial)
 
-        data_collector.summarize_results(save_file_uuid)
-        data_collector.clear_data()
+def conduct_beta_analysis(args):
+    algorithm = APPROX_BEST_RESPONSE
+    starting_beta = args.beta
+    beta_vals = np.arange(starting_beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
+    num_trials = len(beta_vals)
+
+    iter_per_trial = args.iterations_per_trial
+    num_resources = args.num_resources
+    num_agents = args.num_agents
+    m = args.max_cover
+    resource_val_lb = args.resource_val_lb
+    resource_val_ub = args.resource_val_ub
+    agent_action_len_lb = args.agent_action_len_lb
+    agent_action_len_ub = args.agent_action_len_ub
+    agent_subset_len_lb = args.agent_subset_len_lb
+    agent_subset_len_ub = args.agent_subset_len_ub
+
+    # only one system configuration for this analysis
+    system = generate_problem_instance(num_resources, num_agents,
+                                            (agent_action_len_lb, agent_action_len_ub),
+                                            (agent_subset_len_lb, agent_subset_len_ub),
+                                            m, (resource_val_lb, resource_val_ub), 1)[0]
+
+    data_collector = DataCollector(algorithms=[APPROX_BEST_RESPONSE])
+    save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
+
+    score_history = []
+    for trial in range(num_trials):
+        score = function_map.get(algorithm)(system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
+                                  generate_graphics=False, data_collector=data_collector,
+                                  trial_num=trial)
+        score_history.append(score)
+
+    generate_beta_sys_score_plot(beta_vals, score_history)
+
+    data_collector.summarize_results([save_file] * num_trials)
+
 
 
 def call_target_algorithm(algorithm, **kwargs):

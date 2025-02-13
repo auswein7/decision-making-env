@@ -17,8 +17,8 @@ class DataCollector:
         results: data aggregated through scenario execution.
     """
 
-    def __init__(self):
-        self.results = []
+    def __init__(self, algorithms):
+        self.results = {algo_name: [] for algo_name in algorithms}
 
     def log(self, trial, iteration, system, algorithm):
         """
@@ -28,113 +28,117 @@ class DataCollector:
             trial: trial number for this simulation.
             iteration: iteration number for this trial.
             system: configuration at trial/iteration
-            algorithm: algorithm used for entire simulation
+            algorithm: algorithm used for index into results dict
         """
-        self.results.append({
+        self.results[algorithm].append({
             "trial": trial,
             "iteration": iteration,
-            "system": system,
-            "algorithm": algorithm
+            "system": system
         })
 
-    def clear_data(self):
-        self.results = []
+    def clear_data(self, algorithms):
+        """ Reset simulation data to initialization"""
+        self.results = {algo_name: [] for algo_name in algorithms}
 
-    # TODO:: Unit test!!
-    def summarize_results(self, saved_file_uuid):
+    def format_results_data(self):
+        # format results into nested dict, algo -> trial num -> iteration data
+        formatted_results = {algo: {} for algo in self.results}
+        for entry in self.results:
+            for iteration_data in self.results[entry]:
+                trial = iteration_data["trial"]
+                if trial not in formatted_results[entry]:
+                    formatted_results[entry][trial] = []
+                formatted_results[entry][trial].append(iteration_data)
+        return formatted_results
+
+    def summarize_results(self, save_files_per_trial):
         """
         Compile all stored data in self.results.
 
         Attributes:
-            saved_file_uuid: json uuid to match results to system used
+            save_files_per_trial: dict of trial -> system json uuid used that trial
         """
-        # format results into dictionary, keyed by trial number
-        results_by_trial = {}
-        for entry in self.results:
-            trial_num = entry["trial"]
-            if trial_num not in results_by_trial:
-                results_by_trial[trial_num] = []
-            results_by_trial[trial_num].append(entry)
+        formatted_results = self.format_results_data()
 
-        # set up output data, keyed by trial number
-        unique_trials = sorted(set(entry["trial"] for entry in self.results))
-        sim_summary = {trial: {} for trial in unique_trials}
+        for algo in formatted_results.keys():
+            # set up output data, keyed by trial number
+            unique_trials = list(range(0, len(formatted_results[algo])))
+            sim_summary = {trial: {} for trial in unique_trials}
 
-        for trial, data in results_by_trial.items():
-            # get the system from trial 1 iteration 1
-            original_system = [entry for entry in data if entry["iteration"] == 1][0].get("system")
+            for trial, data in formatted_results[algo].items():
+                # get the system from trial 0 iteration 1
+                original_system = [entry for entry in data if entry["iteration"] == 1][0].get("system")
 
-            for agent in original_system.agents:
-                agent.current_action = set()
+                for agent in original_system.agents:
+                    agent.current_action = set()
 
-            # get the system from final trial final iteration
-            final_system = results_by_trial[trial][-1]["system"]
+                # get the system from final trial final iteration
+                final_system = formatted_results[algo][trial][-1]["system"]
 
-            brute_force_score = brute_force(deepcopy(original_system))[0]
-            if brute_force_score == 0:
-                print("No resources can be covered by this system")
-                return -1
+                brute_force_score = brute_force(deepcopy(original_system))[0]
+                if brute_force_score == 0:
+                    print("No resources can be covered by this system")
+                    return -1
 
-            agents = final_system.agents
-            sim_score = final_system.system_score()
-            coverage_map = final_system.resource_coverage
-            resources = final_system.resources
-            formatted_resources = []
-            for resource in resources:
-                formatted_resources.append((resource.id, resource.value))
-            max_cover = final_system.M
-            formatted_agents = format_agent_data(agents)
+                agents = final_system.agents
+                sim_score = final_system.system_score()
+                coverage_map = final_system.resource_coverage
+                resources = final_system.resources
+                formatted_resources = []
+                for resource in resources:
+                    formatted_resources.append((resource.id, resource.value))
+                max_cover = final_system.M
+                formatted_agents = format_agent_data(agents)
 
-            # pull the final state of agent decisions
-            agent_actions = {}
-            for agent in agents:
-                res_list = []
-                for resource in agent.current_action:
-                    res_list.append((resource.id, resource.value))
-                agent_actions[agent.id] = res_list
+                # pull the final state of agent decisions
+                agent_actions = {}
+                for agent in agents:
+                    res_list = []
+                    for resource in agent.current_action:
+                        res_list.append((resource.id, resource.value))
+                    agent_actions[agent.id] = res_list
 
-            resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
-            over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
-                                 coverage_map[resource.id] > max_cover}
-            overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
-            best_system, best_iteration = DataCollector.get_best_system_config(data=data)
+                resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
+                over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
+                                     coverage_map[resource.id] > max_cover}
+                overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
+                best_system, best_iteration = DataCollector.get_best_system_iter(data=data)
 
-            sim_summary[trial] = ({
-                "max_cover": max_cover,
-                "num_agents": len(agents),
-                "agent_ids": [a.id for a in agents],
-                "action_sets": formatted_agents,
-                "agent_allocations": agent_actions,
-                "num_resources": len(resources),
-                "resource_values": formatted_resources,
-                "resource_coverage": coverage_map,
-                "resource_coverage_percentage": resources_covered / len(resources),
-                "over_covered_resources": over_coverage_map,
-                "max_possible_score": brute_force_score,
-                "simulation_score": sim_score,
-                "grade": str((sim_score / brute_force_score) * 100) + "%",
-                "best_system_coverage": format_agent_data(best_system.agents),
-                "best_system_score": best_system.system_score(),
-                "iteration_of_best_system": best_iteration,
-                "agent_total_actions": DataCollector.count_agent_actions(data=data),
-                "resource_popularity": DataCollector.calculate_resource_popularity(data=data),
-                "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
-                                                                                  coverage=coverage_map, M=max_cover),
-                "agent_overhead_actions": overhead_actions,
-                "agent_net_contribution": net_contributions,
-                "sys_convergence_time": 0,
-                "sys_score_vs_beta": DataCollector.calculate_system_score_vs_beta(data=data),
-                "output_file_UUID": saved_file_uuid
-            })
+                sim_summary[trial] = ({
+                    "max_cover": max_cover,
+                    "num_agents": len(agents),
+                    "agent_ids": [a.id for a in agents],
+                    "action_sets": formatted_agents,
+                    "agent_allocations": agent_actions,
+                    "num_resources": len(resources),
+                    "resource_values": formatted_resources,
+                    "resource_coverage": coverage_map,
+                    "resource_coverage_percentage": resources_covered / len(resources),
+                    "over_covered_resources": over_coverage_map,
+                    "max_possible_score": brute_force_score,
+                    "simulation_score": sim_score,
+                    "grade": str((sim_score / brute_force_score) * 100) + "%",
+                    "best_system_coverage": format_agent_data(best_system.agents),
+                    "best_system_score": best_system.system_score(),
+                    "iteration_of_best_system": best_iteration,
+                    "agent_total_actions": DataCollector.count_agent_actions(data=data),
+                    "resource_popularity": DataCollector.calculate_resource_popularity(data=data),
+                    "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
+                                                                                      coverage=coverage_map, M=max_cover),
+                    "agent_overhead_actions": overhead_actions,
+                    "agent_net_contribution": net_contributions,
+                    "sys_convergence_time": 0,
+                    "output_file_UUID": save_files_per_trial[trial]
+                })
 
-            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", self.results[0]["algorithm"],
-                                    f"{uuid.uuid4()}.json")
+            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,
+                                        f"{uuid.uuid4()}.json")
             DataCollector.export_to_json(sim_summary, filename)
 
     @staticmethod
-    def get_best_system_config(data):
+    def get_best_system_iter(data):
         """
-        Find the system configuration that achieved the maximum score over all iterations.
+        Find the simulation iteration with the maximum score over all iterations.
 
         Attributes:
             data: all iteration data for a single trial
@@ -150,51 +154,6 @@ class DataCollector:
                 max_score = sim_score
                 best_system_iter = system, iteration + 1
         return best_system_iter
-
-    # TODO:: FINSIH IMPLEMENTATION
-    @staticmethod
-    def calculate_system_score_vs_beta(data):
-        """
-        Construct x/y dimensional data comparing beta's effect on system score.
-
-        Attributes:
-            data: all iteration data for a single trial
-        Returns:
-            beta_sys_score: x/y dimensional data
-        """
-        # Calculated at the trial level
-        # contruct a dictionary of trial: average_system_score
-        avg_sys_score = 0
-        count = 0
-        for iteration_data in data:
-            system = iteration_data["system"]
-            avg_sys_score += system.system_score()
-            count += 1
-
-        avg_sys_score = avg_sys_score / count
-
-        return avg_sys_score
-
-    # TODO:: FINISH IMPLEMENTATION
-    @staticmethod
-    def calculate_system_convergence(data, conv_iter=0):
-        """
-        Determine if the agents choices, and system score have converged.
-
-        Attributes:
-            data: all iteration data for a single trial
-            conv_iter: iterations threshold, if system has not changed behavior in the past conv_iter iterations
-            the system has converged
-        Returns:
-            conv_iter: iteration of convergence, -1 if have not converged
-        """
-        # TODO:: lookup markov chain, converging to a stationary distribution
-        # average over past N iterations
-        state_map = {}
-
-        for iteration_data in data:
-            continue
-        return -1
 
     @staticmethod
     def calculate_overhead_net_contribution(data):
@@ -233,7 +192,6 @@ class DataCollector:
 
         return agent_overhead_action_counts, agent_net_contributions
 
-    # TODO:Unit test!!
     @staticmethod
     def calculate_resource_popularity(data):
         """
@@ -264,7 +222,6 @@ class DataCollector:
 
         return resource_popularity
 
-    # TODO:Unit test!!
     @staticmethod
     def calculate_agent_contribution(agents, coverage, M):
         """
@@ -280,12 +237,10 @@ class DataCollector:
         agent_action_contributions = {agent.id: 0 for agent in agents}
 
         for agent in agents:
-            # TODO:: "/coverage[r.id]", add this after r.value potentially
-            system_contribution = sum(r.value for r in agent.current_action if r.id in coverage and coverage[r.id] >= M)
+            system_contribution = sum(r.value/coverage[r.id] for r in agent.current_action if r.id in coverage and coverage[r.id] >= M)
             agent_action_contributions[agent.id] = system_contribution
         return agent_action_contributions
 
-    # TODO:: Unit test!!
     @staticmethod
     def count_agent_actions(data):
         """

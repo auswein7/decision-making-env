@@ -108,6 +108,13 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--analyze_beta",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_beta', "False").lower() in ['true', '1', 'yes'],
+        help="Boolean to generate simulation graphics after each trial"
+    )
+
+    parser.add_argument(
         "--generate_graphics",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('generate_graphics', "False").lower() in ['true', '1', 'yes'],
@@ -119,6 +126,13 @@ def read_app_properties():
         type=str,
         default=str(config['DEFAULT'].get('algorithm', "")),
         help="The algorithm to use for agent allocation"
+    )
+
+    parser.add_argument(
+        "--system_convergence_iter",
+        type=int,
+        default=int(config['DEFAULT'].get('system_convergence_iter', "0")),
+        help="The upper bound on how many resources can be covered in one subset of agent action"
     )
 
     args = parser.parse_args()
