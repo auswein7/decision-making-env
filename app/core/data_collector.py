@@ -128,7 +128,7 @@ class DataCollector:
                                                                                       M=max_cover),
                     "agent_overhead_actions": overhead_actions,
                     "agent_net_contribution": net_contributions,
-                    "sys_convergence_time": 0,
+                    "sys_convergence_iteration": data[-1]["iteration"]+1,
                     "output_file_UUID": save_files_per_trial[trial]
                 })
 

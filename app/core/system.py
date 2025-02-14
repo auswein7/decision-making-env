@@ -17,6 +17,7 @@ class System:
         self.M = m  # max-cover
         self.utility_function = utility_function
         self.resource_coverage = set()
+        self.score = 0
 
     def system_score(self):
         """Compute the system-level score."""
@@ -31,5 +32,6 @@ class System:
         score = sum(resource.value for resource in self.resources if resource_coverage[resource.id] >= self.M)
 
         self.resource_coverage = resource_coverage
+        self.score = score
 
         return score

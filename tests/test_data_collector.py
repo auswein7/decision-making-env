@@ -26,7 +26,7 @@ def test_calculate_overhead_net_contribution():
     return 0
 
 
-def test_calculate_resource_poopularity():
+def test_calculate_resource_popularity():
     return 0
 
 

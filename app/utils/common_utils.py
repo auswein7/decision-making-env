@@ -25,8 +25,6 @@ def load_scenario_from_json(file_path):
     with open(file_path, 'r') as file:
         data = json.load(file)
 
-        algorithm = data["algorithm"]
-
         resources = [
             Resource(r["id"], r["value"])
             for r in data["resources"]
@@ -45,7 +43,7 @@ def load_scenario_from_json(file_path):
 
         m = data["system"]["m"]
         sys = System(resources=resources, agents=agents, m=m, utility_function=system_utility)
-        return sys, algorithm
+        return sys
 
 
 def export_scenario_to_json(system=None, file_path="app/out"):

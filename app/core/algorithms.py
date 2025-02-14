@@ -48,8 +48,6 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), "best_response")
-        else:
-            print("No reference to data collector passed, data will not be saved.")
 
         if iteration % conv_iter == 0:
             past_systems = systems[-conv_iter:]
@@ -57,7 +55,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
                 score = system.system_score()
                 print(
                     f"\nBest response system converged on iteration {iteration} with a final system score of {score}.\n"
-                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
+                    f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -140,15 +138,13 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
                 score = system.system_score()
                 print(
                     f"\nApproximate Best response system converged on iteration {iteration} with a final system score of {score}.\n"
-                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
+                    f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), "approximate_best_response")
-        else:
-            print("No reference to data collector passed, data will not be saved.")
 
         # Log progress every 10000 iterations
         if iteration % 10000 == 0:
@@ -221,15 +217,13 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
                 score = system.system_score()
                 print(
                     f"\nLogit response system converged on iteration {iteration} with a final system score of {score}.\n"
-                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
+                    f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), "logit_response")
-        else:
-            print("No reference to data collector passed, data will not be saved.")
 
         # Log progress every 10000 iterations
         if iteration % 10000 == 0:
@@ -377,8 +371,9 @@ def calculate_system_convergence(sys_history, curr_sys):
     :return: true if system has converged, false otherwise.
     """
     score_sim_count = 0
-    score = curr_sys.system_score()
-    score_history = [system.system_score() for system in list(reversed(sys_history))]
+    score = curr_sys.score
+    score_history = [system.score for system in list(reversed(sys_history))]
+    print("Hist: ", score_history)
     # has the system score converged
     for idx, prev_score in enumerate(score_history):
         # if the score is still improving do not terminate

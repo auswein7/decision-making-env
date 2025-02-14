@@ -60,7 +60,7 @@ def run_from_json(args):
     # set up data collector
     data_collector = DataCollector(algorithms=algorithms)
 
-    system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
+    system = load_scenario_from_json(JSON_LOAD_PATH)
     for algorithm in algorithms:
         call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                               generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1,
