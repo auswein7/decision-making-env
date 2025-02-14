@@ -9,7 +9,8 @@ from app.utils.common_utils import generate_animation
 from app.utils.common_utils import format_agent_data
 
 
-def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0, conv_iter=float("inf")):
+def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
+                  conv_iter=float("inf")):
     """
     Randomly select agents from system, evaluate the best action for the agent.
     The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
@@ -54,8 +55,9 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
-                print(f"\nBest response system converged on iteration {iteration} with a final system score of {score}.\n"
-                      f"Simulation score stable for {conv_iter+1} iterations.\n")
+                print(
+                    f"\nBest response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -136,8 +138,9 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
-                print(f"\nApproximate Best response system converged on iteration {iteration} with a final system score of {score}.\n"
-                      f"Simulation score stable for {conv_iter+1} iterations.\n")
+                print(
+                    f"\nApproximate Best response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -158,8 +161,10 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
     return score
 
+
 # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6858606
-def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0, temperature=1,
+def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
+                   temperature=1,
                    conv_iter=float("inf")):
     if temperature < 0.1:
         print("Temperature value must be greater than 0.1")
@@ -184,9 +189,10 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
 
         # Define probability distribution for all actions in action set
 
-        sum_scaled_scores = sum([exp(action_score*(1/temperature)) for action_score in action_scores.values()])
+        sum_scaled_scores = sum([exp(action_score * (1 / temperature)) for action_score in action_scores.values()])
 
-        probabilities = {action: exp(score*(1/temperature)) / sum_scaled_scores for action, score in action_scores.items()}
+        probabilities = {action: exp(score * (1 / temperature)) / sum_scaled_scores for action, score in
+                         action_scores.items()}
         selected_action = random.choices(
             population=list(probabilities.keys()),
             weights=list(probabilities.values()),
@@ -199,8 +205,9 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
-                print(f"\nLogit response system converged on iteration {iteration} with a final system score of {score}.\n"
-                      f"Simulation score stable for {conv_iter + 1} iterations.\n")
+                print(
+                    f"\nLogit response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"Simulation score stable for {conv_iter + 1} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -230,7 +237,7 @@ def ant_colony_response(system=None, max_iterations=50, generate_graphics=False,
     return 0
 
 
-#TODO:: this function is broken, results do not equal brute force results
+# TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
     print(f"Calculating maximum attainable system score using ilp_response algorithm.")
 
@@ -274,8 +281,8 @@ def ilp_response(system=None):
 
     # Ensure max_cover condition is satisfied, upper bind to ensure no over coverage
     for j in range(num_resources):
-            model.addConstraint(lpSum(resource_selected[i, j] for i in agents) >= system.M * resource_covered[j])
-            model.addConstraint(lpSum(resource_selected[i, j] for i in agents) <= (system.M + 1) * resource_covered[j])
+        model.addConstraint(lpSum(resource_selected[i, j] for i in agents) >= system.M * resource_covered[j])
+        model.addConstraint(lpSum(resource_selected[i, j] for i in agents) <= (system.M + 1) * resource_covered[j])
 
     # -------- CONSTRAINTS END --------
 
@@ -288,7 +295,8 @@ def ilp_response(system=None):
         i: [k for k in range(len(agents[i])) if action_selected[i, k].varValue and action_selected[i, k].varValue > 0.5]
         for i in selected_agents
     }
-    covered_resources = [j for j in range(num_resources) if resource_covered[j].varValue and resource_covered[j].varValue > 0.5]
+    covered_resources = [j for j in range(num_resources) if
+                         resource_covered[j].varValue and resource_covered[j].varValue > 0.5]
 
     system.resource_coverage = {resource.id: 0 for resource in system.resources}
 
@@ -343,6 +351,7 @@ def brute_force(system=None):
 
     return best_score, best_coverage
 
+
 def calculate_system_convergence(sys_history, curr_sys):
     score_sim_count = 0
     score = curr_sys.system_score()
@@ -353,7 +362,7 @@ def calculate_system_convergence(sys_history, curr_sys):
         if prev_score < score:
             return False
         else:
-            score_sim_count+=1
+            score_sim_count += 1
         score = prev_score
 
     if score_sim_count >= len(sys_history):
@@ -365,7 +374,7 @@ def calculate_system_convergence(sys_history, curr_sys):
 function_map = {
     "best_response": best_response,
     "approximate_best_response": approximate_best_response,
-    "ilp_response":ilp_response,
+    "ilp_response": ilp_response,
     "logit_response": logit_response,
     "particle_swarm_response": particle_swarm_response,
     "ant_colony_response": ant_colony_response

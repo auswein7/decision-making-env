@@ -124,7 +124,8 @@ class DataCollector:
                     "agent_total_actions": DataCollector.count_agent_actions(data=data),
                     "resource_popularity": DataCollector.calculate_resource_popularity(data=data),
                     "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
-                                                                                      coverage=coverage_map, M=max_cover),
+                                                                                      coverage=coverage_map,
+                                                                                      M=max_cover),
                     "agent_overhead_actions": overhead_actions,
                     "agent_net_contribution": net_contributions,
                     "sys_convergence_time": 0,
@@ -132,7 +133,7 @@ class DataCollector:
                 })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,
-                                        f"{uuid.uuid4()}.json")
+                                    f"{uuid.uuid4()}.json")
             DataCollector.export_to_json(sim_summary, filename)
 
     @staticmethod
@@ -237,7 +238,8 @@ class DataCollector:
         agent_action_contributions = {agent.id: 0 for agent in agents}
 
         for agent in agents:
-            system_contribution = sum(r.value/coverage[r.id] for r in agent.current_action if r.id in coverage and coverage[r.id] >= M)
+            system_contribution = sum(
+                r.value / coverage[r.id] for r in agent.current_action if r.id in coverage and coverage[r.id] >= M)
             agent_action_contributions[agent.id] = system_contribution
         return agent_action_contributions
 

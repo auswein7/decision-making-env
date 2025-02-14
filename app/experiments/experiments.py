@@ -47,6 +47,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
         system_dict[trial] = System(resources, agents, m, system_utility)
     return system_dict
 
+
 # TODO:: run from json when conducting beta trial
 def run_from_json(args):
     algorithms = args.algorithm.split(',')
@@ -62,7 +63,8 @@ def run_from_json(args):
     system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
     for algorithm in algorithms:
         call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1, cov_iter=sys_convergence,
+                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1,
+                              cov_iter=sys_convergence,
                               temperature=temperature)
 
         sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
@@ -125,43 +127,61 @@ def run_experiments(args):
 
     data_collector.summarize_results(save_file_per_trial)
 
+
 def conduct_parameter_analysis(args, param_name):
-    switch
-    algorithm = APPROX_BEST_RESPONSE
-    starting_beta = args.beta
-    beta_vals = np.arange(starting_beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
-    num_trials = len(beta_vals)
+    algorithm = ""
+    beta_vals = []
+    temperature_vals = []
 
-    iter_per_trial = args.iterations_per_trial
-    num_resources = args.num_resources
-    num_agents = args.num_agents
-    m = args.max_cover
-    resource_val_lb = args.resource_val_lb
-    resource_val_ub = args.resource_val_ub
-    agent_action_len_lb = args.agent_action_len_lb
-    agent_action_len_ub = args.agent_action_len_ub
-    agent_subset_len_lb = args.agent_subset_len_lb
-    agent_subset_len_ub = args.agent_subset_len_ub
+    num_trials = args.num_trials
+    beta = args.beta
+    temperature = args.temperature
 
-    # only one system configuration for this analysis
-    system = generate_problem_instance(num_resources, num_agents,
-                                            (agent_action_len_lb, agent_action_len_ub),
-                                            (agent_subset_len_lb, agent_subset_len_ub),
-                                            m, (resource_val_lb, resource_val_ub), 1)[0]
+    if param_name == "beta":
+        algorithm = APPROX_BEST_RESPONSE
+        beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
+        num_trials = len(beta_vals)
+    if param_name == "temp":
+        algorithm = LOGIT_RESPONSE
+        temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
+        num_trials = len(temperature_vals)
 
-    data_collector = DataCollector(algorithms=[APPROX_BEST_RESPONSE])
-    save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
+    if algorithm != "":
+        iter_per_trial = args.iterations_per_trial
+        num_resources = args.num_resources
+        num_agents = args.num_agents
+        m = args.max_cover
+        resource_val_lb = args.resource_val_lb
+        resource_val_ub = args.resource_val_ub
+        agent_action_len_lb = args.agent_action_len_lb
+        agent_action_len_ub = args.agent_action_len_ub
+        agent_subset_len_lb = args.agent_subset_len_lb
+        agent_subset_len_ub = args.agent_subset_len_ub
+        generate_graphics = args.generate_graphics
+        sys_convergence = args.system_convergence_iter
 
-    score_history = []
-    for trial in range(num_trials):
-        score = function_map.get(algorithm)(system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
-                                  generate_graphics=False, data_collector=data_collector,
-                                  trial_num=trial)
-        score_history.append(score)
+        # only one system configuration for this analysis
+        system = generate_problem_instance(num_resources, num_agents,
+                                           (agent_action_len_lb, agent_action_len_ub),
+                                           (agent_subset_len_lb, agent_subset_len_ub),
+                                           m, (resource_val_lb, resource_val_ub), 1)[0]
 
-    generate_var_analysis_plot(beta_vals, score_history)
+        data_collector = DataCollector(algorithms=[algorithm])
+        save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
-    data_collector.summarize_results([save_file] * num_trials)
+        score_history = []
+        for trial in range(num_trials):
+            score = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+                                          generate_graphics=generate_graphics, data_collector=data_collector,
+                                          trial_num=trial, conv_iter=sys_convergence, temperature=temperature)
+            score_history.append(score)
+
+        if algorithm == APPROX_BEST_RESPONSE:
+            generate_param_analysis_plot(beta_vals, score_history, "Beta")
+        if algorithm == LOGIT_RESPONSE:
+            generate_param_analysis_plot(temperature_vals, score_history, "Temperature")
+
+        data_collector.summarize_results([save_file] * num_trials)
 
 
 def call_target_algorithm(algorithm, **kwargs):

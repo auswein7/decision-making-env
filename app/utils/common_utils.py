@@ -202,17 +202,24 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
 
     print(f"GIF saved as {output_gif}")
 
+
 def generate_param_analysis_plot(x, y, var_name):
-    filename = os.path.join(JSON_SAVE_PATH,f"beta_vs_sys_score.png")
+    filename = os.path.join(JSON_SAVE_PATH, f"{var_name}_vs_sys_score.png")
     os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 
-    plt.figure()
-    plt.ylabel("System Score per trial")
-    plt.xlabel(f"{var_name}")
-    plt.title(F"{var_name} vs System Score")
-    plt.plot(x, y)
+    plt.figure(figsize=(8, 5))
+    plt.plot(x, y, marker='o', linestyle='-', linewidth=2, markersize=6)
+    plt.xlabel(f"{var_name}", fontsize=12)
+    plt.ylabel("System Score per trial", fontsize=12)
+    plt.title(f"{var_name} vs System Score", fontsize=14, fontweight='bold')
 
-    plt.savefig(filename)
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(filename, dpi=300)
+    plt.close()
 
 
 def format_agent_data(agents):
