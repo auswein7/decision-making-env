@@ -204,6 +204,13 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
 
 
 def generate_param_analysis_plot(x, y, var_name):
+    """
+    Generate plot given system score per trial, targeting a specific parameter.
+
+    :param x: axis data, parameter value for trial
+    :param y: axis data, system score for trial
+    :return: None
+    """
     filename = os.path.join(JSON_SAVE_PATH, f"{var_name}_vs_sys_score.png")
     os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 

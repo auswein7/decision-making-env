@@ -1,7 +1,7 @@
 import logging
 
 
-# TODO:: refactor this class to not be a singleton if we want logging in the future
+# TODO:: refactor this class to not be a singleton if we want logging in the future, potentially remove logger
 class Logger:
     """
     Logger singleton class. Allows for instantiation in any file. Any logging exports to

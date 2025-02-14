@@ -41,7 +41,7 @@ class DataCollector:
         self.results = {algo_name: [] for algo_name in algorithms}
 
     def format_results_data(self):
-        # format results into nested dict, algo -> trial num -> iteration data
+        """ format results into nested dict, algo -> trial num -> iteration data """
         formatted_results = {algo: {} for algo in self.results}
         for entry in self.results:
             for iteration_data in self.results[entry]:

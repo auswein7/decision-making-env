@@ -1,8 +1,8 @@
-JSON_LOAD_PATH = "scenarios/test_scenario.json"
-JSON_SAVE_PATH = "app/out"
+JSON_LOAD_PATH = "scenarios/test_scenario.json" # file path to preload system configurations
+JSON_SAVE_PATH = "app/out" # save directory for all experiment data
 APPROX_BEST_RESPONSE = "approximate_best_response"
 LOGIT_RESPONSE = "logit_response"
-MAX_BETA = 1.0
-BETA_STEP_SIZE = 0.05
-MAX_TEMP = 100
-TEMP_STEP_SIZE = 10
+MAX_BETA = 1.0 # maximum beta value when conducting beta analysis
+BETA_STEP_SIZE = 0.05 # amount to change beta by each trial
+MAX_TEMP = 100 # maximum temperature value when conducting temperature analysis
+TEMP_STEP_SIZE = 10 # amount to change temperature by each trial

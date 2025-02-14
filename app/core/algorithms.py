@@ -166,6 +166,20 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
                    temperature=1,
                    conv_iter=float("inf")):
+    """
+    Log-linear learning algorithm. Construct probability distributions for agent actions based on
+    passed temperature value.
+
+    :param trial_num: current simulation trial
+    :param data_collector: class to save data from simulation and export to json
+    :param generate_graphics: boolean to enable graphics generation
+    :param temperature: passed in value to weight resource values
+                 if temperature == inf: random choice, if temperature == 0.1: best_response
+    :param system: object containing all experiment data
+    :param max_iterations: iteration count for given system, each new trial will reset this value
+    :param conv_iter: how many iterations the system state must remain the same for the system to be converged
+    :return: system score after running simulation
+    """
     if temperature < 0.1:
         print("Temperature value must be greater than 0.1")
         return 0
@@ -229,16 +243,18 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
     return score
 
 
-def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
-    return 0
-
-
-def ant_colony_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
+def genetic_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
     return 0
 
 
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
+    """
+    Compute optimal system score using a LP model.
+
+    :param system: object containing all experiment data
+    :return: optimal system score
+    """
     print(f"Calculating maximum attainable system score using ilp_response algorithm.")
 
     agents = system.agents
@@ -353,6 +369,13 @@ def brute_force(system=None):
 
 
 def calculate_system_convergence(sys_history, curr_sys):
+    """
+    Compute optimal system score using a LP model.
+
+    :param sys_history: N previous systems based on passed convergence_iteration parameter
+    :param curr_sys: current system at this iteration
+    :return: true if system has converged, false otherwise.
+    """
     score_sim_count = 0
     score = curr_sys.system_score()
     score_history = [system.system_score() for system in list(reversed(sys_history))]
@@ -374,8 +397,6 @@ def calculate_system_convergence(sys_history, curr_sys):
 function_map = {
     "best_response": best_response,
     "approximate_best_response": approximate_best_response,
-    "ilp_response": ilp_response,
     "logit_response": logit_response,
-    "particle_swarm_response": particle_swarm_response,
-    "ant_colony_response": ant_colony_response
+    "genetic_response": genetic_response
 }
