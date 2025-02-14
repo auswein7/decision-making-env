@@ -202,14 +202,14 @@ def generate_animation(systems=None, output_gif="simulation.gif"):
 
     print(f"GIF saved as {output_gif}")
 
-def generate_beta_sys_score_plot(x, y):
+def generate_param_analysis_plot(x, y, var_name):
     filename = os.path.join(JSON_SAVE_PATH,f"beta_vs_sys_score.png")
     os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 
     plt.figure()
-    plt.xlabel("System Score per trial")
-    plt.ylabel("Beta")
-    plt.title("Beta vs System Score")
+    plt.ylabel("System Score per trial")
+    plt.xlabel(f"{var_name}")
+    plt.title(F"{var_name} vs System Score")
     plt.plot(x, y)
 
     plt.savefig(filename)

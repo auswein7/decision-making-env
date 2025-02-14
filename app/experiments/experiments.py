@@ -13,8 +13,10 @@ from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import export_scenario_to_json
-from app.utils.common_utils import generate_beta_sys_score_plot
-from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH, APPROX_BEST_RESPONSE, MAX_BETA, BETA_STEP_SIZE
+from app.utils.common_utils import generate_param_analysis_plot
+from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH, APPROX_BEST_RESPONSE, MAX_BETA, BETA_STEP_SIZE, \
+    LOGIT_RESPONSE, MAX_TEMP, TEMP_STEP_SIZE
+
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
                               action_subset_size_range, m, resource_val_range, num_trials):
@@ -45,11 +47,13 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
         system_dict[trial] = System(resources, agents, m, system_utility)
     return system_dict
 
-
+# TODO:: run from json when conducting beta trial
 def run_from_json(args):
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
+    temperature = args.temperature
+    sys_convergence = args.system_convergence_iter
     generate_graphics = args.generate_graphics
 
     # set up data collector
@@ -58,7 +62,8 @@ def run_from_json(args):
     system, algo_name = load_scenario_from_json(JSON_LOAD_PATH)
     for algorithm in algorithms:
         call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1)
+                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1, cov_iter=sys_convergence,
+                              temperature=temperature)
 
         sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
 
@@ -75,13 +80,20 @@ def run_experiments(args):
     """
 
     analyze_beta = args.analyze_beta
+    analyze_temp = args.analyze_temperature
 
     if analyze_beta:
-        conduct_beta_analysis(args)
+        conduct_parameter_analysis(args, "beta")
+        return
+
+    if analyze_temp:
+        conduct_parameter_analysis(args, "temp")
+        return
 
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
+    temperature = args.temperature
     generate_graphics = args.generate_graphics
     num_trials = args.num_trials
     num_resources = args.num_resources
@@ -109,11 +121,12 @@ def run_experiments(args):
         for algorithm in algorithms:
             call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                                   generate_graphics=generate_graphics, data_collector=data_collector,
-                                  trial_num=trial, conv_iter=sys_convergence)
+                                  trial_num=trial, conv_iter=sys_convergence, temperature=temperature)
 
     data_collector.summarize_results(save_file_per_trial)
 
-def conduct_beta_analysis(args):
+def conduct_parameter_analysis(args, param_name):
+    switch
     algorithm = APPROX_BEST_RESPONSE
     starting_beta = args.beta
     beta_vals = np.arange(starting_beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
@@ -146,10 +159,9 @@ def conduct_beta_analysis(args):
                                   trial_num=trial)
         score_history.append(score)
 
-    generate_beta_sys_score_plot(beta_vals, score_history)
+    generate_var_analysis_plot(beta_vals, score_history)
 
     data_collector.summarize_results([save_file] * num_trials)
-
 
 
 def call_target_algorithm(algorithm, **kwargs):

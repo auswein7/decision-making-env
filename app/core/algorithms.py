@@ -1,13 +1,15 @@
 import random
 from copy import deepcopy
 from itertools import product
-from pulp import LpMaximize, LpProblem, LpVariable, lpSum, LpStatus
+from math import exp
+
+from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.utils.common_utils import generate_animation
 from app.utils.common_utils import format_agent_data
 
 
-def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0, conv_iter=0):
+def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0, conv_iter=float("inf")):
     """
     Randomly select agents from system, evaluate the best action for the agent.
     The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
@@ -52,8 +54,8 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
-                print(f"Best response system converged on iteration {iteration} with a final system score of {score}.\n"
-                      f"Agent actions and simulation score stable for {conv_iter+1} iterations.\n")
+                print(f"\nBest response system converged on iteration {iteration} with a final system score of {score}.\n"
+                      f"Simulation score stable for {conv_iter+1} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -71,7 +73,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
 
 
 def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False, data_collector=None,
-                              trial_num=0, conv_iter=0):
+                              trial_num=0, conv_iter=float("inf")):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
     based on passed beta value. Create a probability distribution using these scaled values. Select the
@@ -134,8 +136,8 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
-                print(f"Best response system converged on iteration {iteration} with a final system score of {score}.\n"
-                      f"Agent actions and simulation score stable for {conv_iter+1} iterations.\n")
+                print(f"\nApproximate Best response system converged on iteration {iteration} with a final system score of {score}.\n"
+                      f"Simulation score stable for {conv_iter+1} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
@@ -156,10 +158,68 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
     return score
 
+# https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6858606
+def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0, temperature=1,
+                   conv_iter=float("inf")):
+    if temperature < 0.1:
+        print("Temperature value must be greater than 0.1")
+        return 0
 
-def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
+    print(f"Beginning simulation with {max_iterations} iterations using logit_response algorithm.")
 
-    return 0
+    iteration = 0
+
+    # list for rendering simulation gif files
+    systems = []
+
+    while iteration < max_iterations:
+        iteration += 1
+        agent = random.choice(system.agents)
+
+        # Evaluate all possible actions
+        action_scores = {
+            frozenset(action): agent.evaluate_action(action, system, system.utility_function)
+            for action in agent.action_set
+        }
+
+        # Define probability distribution for all actions in action set
+
+        sum_scaled_scores = sum([exp(action_score*(1/temperature)) for action_score in action_scores.values()])
+
+        probabilities = {action: exp(score*(1/temperature)) / sum_scaled_scores for action, score in action_scores.items()}
+        selected_action = random.choices(
+            population=list(probabilities.keys()),
+            weights=list(probabilities.values()),
+            k=1
+        )[0]
+
+        agent.current_action = set(selected_action)
+
+        if iteration % conv_iter == 0:
+            past_systems = systems[-conv_iter:]
+            if calculate_system_convergence(past_systems, system):
+                score = system.system_score()
+                print(f"\nLogit response system converged on iteration {iteration} with a final system score of {score}.\n"
+                      f"Simulation score stable for {conv_iter + 1} iterations.\n")
+                return score
+
+        systems.append(deepcopy(system))
+
+        if data_collector is not None:
+            data_collector.log(trial_num, iteration, deepcopy(system), "logit_response")
+        else:
+            print("No reference to data collector passed, data will not be saved.")
+
+        # Log progress every 10000 iterations
+        if iteration % 10000 == 0:
+            print(f"Iteration {iteration}: System Score = {system.system_score()}")
+
+    if generate_graphics:
+        generate_animation(systems=systems)
+
+    score = system.system_score()
+
+    return score
 
 
 def particle_swarm_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):

@@ -108,9 +108,23 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--temperature",
+        type=float,
+        default=float(config['DEFAULT'].get('temperature', "0.0")),
+        help="Temperature value for the logit response algorithm"
+    )
+
+    parser.add_argument(
         "--analyze_beta",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('analyze_beta', "False").lower() in ['true', '1', 'yes'],
+        help="Boolean to generate simulation graphics after each trial"
+    )
+
+    parser.add_argument(
+        "--analyze_temperature",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_temperature', "False").lower() in ['true', '1', 'yes'],
         help="Boolean to generate simulation graphics after each trial"
     )
 
