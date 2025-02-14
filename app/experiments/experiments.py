@@ -69,8 +69,7 @@ def run_from_json(args):
 
         sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
 
-        data_collector.summarize_results(saved_file_uuid=sim_json)
-        data_collector.clear_data()
+        data_collector.summarize_results([sim_json])
 
 
 def run_experiments(args):
