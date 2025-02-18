@@ -43,7 +43,7 @@ def test_system_score_default():
     assert system.system_score() == 10
 
 
-def test_system_score_m_greater_than_2():
+def test_system_score_m_3():
     resources = [Resource(i, value=10) for i in range(3)]
 
     # Create mock agents with set actions

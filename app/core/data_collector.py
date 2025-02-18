@@ -51,7 +51,7 @@ class DataCollector:
                 formatted_results[entry][trial].append(iteration_data)
         return formatted_results
 
-    def summarize_results(self, save_files_per_trial):
+    def summarize_results(self, save_files_per_trial, run_args):
         """
         Compile all stored data in self.results.
 
@@ -129,7 +129,8 @@ class DataCollector:
                     "agent_overhead_actions": overhead_actions,
                     "agent_net_contribution": net_contributions,
                     "sys_convergence_iteration": data[-1]["iteration"]+1,
-                    "output_file_UUID": save_files_per_trial[trial]
+                    "output_file_UUID": save_files_per_trial[trial],
+                    # "run_args": run_args
                 })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,

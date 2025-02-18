@@ -32,6 +32,7 @@ def test_ilp_response():
     system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
     assert brute_force(system)[0] == ilp_response(system)
 
+
 def test_calculate_system_convergence():
     converge_iter = 10
     sys_history = [generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0] for _ in range(converge_iter)]
@@ -45,4 +46,3 @@ def test_calculate_system_convergence():
     not_converged = calculate_system_convergence(sys_history, current_sys)
 
     assert converged == True and not_converged == False
-

@@ -5,6 +5,7 @@ from math import exp
 
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
+from app.models.genetic_algorithm import GeneticAlgorithm
 from app.utils.common_utils import generate_animation
 from app.utils.common_utils import format_agent_data
 
@@ -24,7 +25,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
     :param conv_iter: how many iterations the system state must remain the same for the system to be converged
     :return: system score after running simulation
     """
-    print(f"Beginning simulation with {max_iterations} iterations using best_response algorithm.")
+    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using best_response algorithm.")
     iteration = 0
 
     # list for rendering simulation gif files
@@ -61,7 +62,7 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
         systems.append(deepcopy(system))
 
         # Print progress every 10000 iterations
-        if iteration % 10000 == 0:
+        if iteration % 100 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     score = system.system_score()
@@ -89,7 +90,8 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
     :param conv_iter: how many iterations the system state must remain the same for the system to be converged
     :return: system score after running simulation
     """
-    print(f"Beginning simulation with {max_iterations} iterations using approximate_best_response algorithm.")
+    print(
+        f"Beginning trial {trial_num} with {max_iterations} iterations and beta: {beta} using approximate_best_response algorithm.")
 
     iteration = 0
 
@@ -147,7 +149,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             data_collector.log(trial_num, iteration, deepcopy(system), "approximate_best_response")
 
         # Log progress every 10000 iterations
-        if iteration % 10000 == 0:
+        if iteration % 100 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     if generate_graphics:
@@ -180,7 +182,8 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
         print("Temperature value must be greater than 0.1")
         return 0
 
-    print(f"Beginning simulation with {max_iterations} iterations using logit_response algorithm.")
+    print(
+        f"Beginning trial {trial_num} with {max_iterations} iterations and temperature: {temperature} using logit_response algorithm.")
 
     iteration = 0
 
@@ -226,7 +229,7 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
             data_collector.log(trial_num, iteration, deepcopy(system), "logit_response")
 
         # Log progress every 10000 iterations
-        if iteration % 10000 == 0:
+        if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     if generate_graphics:
@@ -237,9 +240,47 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
     return score
 
 
-def genetic_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0):
-    return 0
+def genetic_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
+                     population_size=0, mutation_rate=0.5, tournament_k=0.1, num_parents=2,
+                     generational_size=0.9, k_crossover=1):
+    print(
+        f"Creating population {trial_num} with {max_iterations} total generations using genetic_response.\n"
+        f"population_size: {population_size}\nmutation_rate: {mutation_rate}\ntournament_k: {tournament_k}\nnum_parents: {num_parents}\n"
+        f"generational_size: {generational_size}\nk_crossover: {k_crossover}\n")
 
+    iteration = 0
+
+    # list for rendering simulation gif files
+    ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
+                          num_parents, generational_size, k_crossover)
+    ga.create_population(system)
+    most_fit_sys = None
+    while iteration < max_iterations:
+        iteration += 1
+
+        convergence = ga.breed_population()
+        ga.evaluate_fitness()
+
+        most_fit_sys = max(ga.population, key=lambda x: x[1])[0]
+        score = most_fit_sys.system_score()
+
+        if convergence:
+            print(
+                f"\nGenetic response system converged on iteration {iteration} with a final system score of {score}.\n")
+
+
+        if data_collector is not None:
+            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), "genetic_response")
+
+        # Log progress every 10000 iterations
+        if iteration % 1000 == 0:
+            print(f"Iteration {iteration}: System Score = {score}")
+
+    return most_fit_sys.system_score()
+
+
+""" BELOW FUNCTIONS CONTAIN ALGORITHMS THAT WILL DETERMINISTICALLY COMPUTE THE MAXIMUM ATTAINABLE SYSTEM SCORE
+GIVE AGENT ACTION SET COVERAGE AND RESOURCE VALUES"""
 
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
@@ -373,7 +414,6 @@ def calculate_system_convergence(sys_history, curr_sys):
     score_sim_count = 0
     score = curr_sys.score
     score_history = [system.score for system in list(reversed(sys_history))]
-    print("Hist: ", score_history)
     # has the system score converged
     for idx, prev_score in enumerate(score_history):
         # if the score is still improving do not terminate

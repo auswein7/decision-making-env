@@ -10,3 +10,7 @@ class Resource:
     def __init__(self, resource_id, value):
         self.id = resource_id
         self.value = value
+
+    #TODO::USE THIS FUNCTION THROUGHOUT THE CODE
+    def __repr__(self):
+        return "Resource(id={}, value={})".format(self.id, self.value)

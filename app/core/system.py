@@ -35,3 +35,6 @@ class System:
         self.score = score
 
         return score
+
+    def reset_coverage_map(self):
+        self.resource_coverage = set()

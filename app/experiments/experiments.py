@@ -49,6 +49,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
 
 
 # TODO:: run from json when conducting beta trial
+# TODO:: run from json with newly added params, make sure it works for all algorithms
 def run_from_json(args):
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
@@ -69,7 +70,7 @@ def run_from_json(args):
 
         sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
 
-        data_collector.summarize_results([sim_json])
+        data_collector.summarize_results([sim_json], args)
 
 
 def run_experiments(args):
@@ -107,6 +108,12 @@ def run_experiments(args):
     agent_subset_len_lb = args.agent_subset_len_lb
     agent_subset_len_ub = args.agent_subset_len_ub
     sys_convergence = args.system_convergence_iter
+    population_size = args.population_size
+    mutation_rate = args.mutation_rate
+    tournament_k = args.tournament_k
+    num_parents = args.num_parents
+    generational_size = args.generational_size
+    k_crossover = args.k_crossover
 
     system_dict = generate_problem_instance(num_resources, num_agents,
                                             (agent_action_len_lb, agent_action_len_ub),
@@ -122,9 +129,12 @@ def run_experiments(args):
         for algorithm in algorithms:
             call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                                   generate_graphics=generate_graphics, data_collector=data_collector,
-                                  trial_num=trial, conv_iter=sys_convergence, temperature=temperature)
+                                  trial_num=trial, conv_iter=sys_convergence, temperature=temperature,
+                                  population_size=population_size,
+                                  mutation_rate=mutation_rate, tournament_k=tournament_k, num_parents=num_parents,
+                                  generational_size=generational_size, k_crossover=k_crossover)
 
-    data_collector.summarize_results(save_file_per_trial)
+    data_collector.summarize_results(save_file_per_trial, args)
 
 
 def conduct_parameter_analysis(args, param_name):
@@ -140,11 +150,12 @@ def conduct_parameter_analysis(args, param_name):
         algorithm = APPROX_BEST_RESPONSE
         beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
         num_trials = len(beta_vals)
+        temperature_vals = np.zeros(num_trials)
     if param_name == "temp":
         algorithm = LOGIT_RESPONSE
         temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
         num_trials = len(temperature_vals)
-
+        beta_vals = np.zeros(num_trials)
     if algorithm != "":
         iter_per_trial = args.iterations_per_trial
         num_resources = args.num_resources
@@ -170,9 +181,9 @@ def conduct_parameter_analysis(args, param_name):
 
         score_history = []
         for trial in range(num_trials):
-            score = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+            score = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
                                           generate_graphics=generate_graphics, data_collector=data_collector,
-                                          trial_num=trial, conv_iter=sys_convergence, temperature=temperature)
+                                          trial_num=trial, conv_iter=sys_convergence, temperature=temperature_vals[trial])
             score_history.append(score)
 
         if algorithm == APPROX_BEST_RESPONSE:
@@ -180,7 +191,7 @@ def conduct_parameter_analysis(args, param_name):
         if algorithm == LOGIT_RESPONSE:
             generate_param_analysis_plot(temperature_vals, score_history, "Temperature")
 
-        data_collector.summarize_results([save_file] * num_trials)
+        data_collector.summarize_results([save_file] * num_trials, args)
 
 
 def call_target_algorithm(algorithm, **kwargs):
