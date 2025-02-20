@@ -2,6 +2,7 @@ import random
 import inspect
 
 import numpy as np
+import uuid
 
 from app.models.resource import Resource
 from app.models.agent import Agent
@@ -15,7 +16,7 @@ from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import export_scenario_to_json
 from app.utils.common_utils import generate_param_analysis_plot
 from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH, APPROX_BEST_RESPONSE, MAX_BETA, BETA_STEP_SIZE, \
-    LOGIT_RESPONSE, MAX_TEMP, TEMP_STEP_SIZE
+    LOGIT_RESPONSE, MAX_TEMP, TEMP_STEP_SIZE, BRUTE_FORCE
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
@@ -59,18 +60,25 @@ def run_from_json(args):
     generate_graphics = args.generate_graphics
 
     # set up data collector
-    data_collector = DataCollector(algorithms=algorithms)
+    data_collector = DataCollector(algorithms=algorithms, uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
 
     system = load_scenario_from_json(JSON_LOAD_PATH)
+    optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+
+    algo_func_args = {algo: {} for algo in algorithms}
+    keys_to_exclude = ["system", "data_collector"]
+    sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
     for algorithm in algorithms:
-        call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+        _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                               generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1,
                               cov_iter=sys_convergence,
                               temperature=temperature)
 
-        sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
 
-        data_collector.summarize_results([sim_json], args)
+
+        algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
+
+    data_collector.summarize_results([sim_json], algo_func_args, optimal_score)
 
 
 def run_experiments(args):
@@ -121,20 +129,25 @@ def run_experiments(args):
                                             m, (resource_val_lb, resource_val_ub), num_trials)
 
     # set up data collector
-    data_collector = DataCollector(algorithms=algorithms)
+    data_collector = DataCollector(algorithms=algorithms, uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
     save_file_per_trial = {}
+    algo_func_args = {algo:{} for algo in algorithms}
+    keys_to_exclude = ["system", "data_collector"]
 
     for trial, system in system_dict.items():
+        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
         save_file_per_trial[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
         for algorithm in algorithms:
-            call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
+            _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
                                   generate_graphics=generate_graphics, data_collector=data_collector,
                                   trial_num=trial, conv_iter=sys_convergence, temperature=temperature,
                                   population_size=population_size,
                                   mutation_rate=mutation_rate, tournament_k=tournament_k, num_parents=num_parents,
                                   generational_size=generational_size, k_crossover=k_crossover)
 
-    data_collector.summarize_results(save_file_per_trial, args)
+            algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
+
+        data_collector.summarize_results(save_file_per_trial, algo_func_args, optimal_score)
 
 
 def conduct_parameter_analysis(args, param_name):
@@ -176,23 +189,30 @@ def conduct_parameter_analysis(args, param_name):
                                            (agent_subset_len_lb, agent_subset_len_ub),
                                            m, (resource_val_lb, resource_val_ub), 1)[0]
 
-        data_collector = DataCollector(algorithms=[algorithm])
+        data_collector = DataCollector(algorithms=[algorithm], uuid_file_map={algorithm: str(uuid.uuid4())})
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
         score_history = []
+        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        save_file_per_trial = {}
+        keys_to_exclude = ["system", "data_collector"]
+
         for trial in range(num_trials):
-            score = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
+            save_file_per_trial[trial] = save_file
+            score, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
                                           generate_graphics=generate_graphics, data_collector=data_collector,
                                           trial_num=trial, conv_iter=sys_convergence, temperature=temperature_vals[trial])
             score_history.append(score)
+
+            func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
+            data_collector.summarize_results(save_file_per_trial, {algorithm:func_args}, optimal_score)
 
         if algorithm == APPROX_BEST_RESPONSE:
             generate_param_analysis_plot(beta_vals, score_history, "Beta")
         if algorithm == LOGIT_RESPONSE:
             generate_param_analysis_plot(temperature_vals, score_history, "Temperature")
 
-        ## TODO:: REFACTOR< THIS IS TORING ALL DATA FOR TRIALS, MEMORY USAGE IS MASSIVE
-        data_collector.summarize_results([save_file] * num_trials, args)
+
 
 
 def call_target_algorithm(algorithm, **kwargs):
@@ -210,4 +230,4 @@ def call_target_algorithm(algorithm, **kwargs):
     sig = inspect.signature(algo)
     filtered_args = {k: v for k, v in kwargs.items() if k in sig.parameters}
 
-    return algo(**filtered_args)
+    return algo(**filtered_args), filtered_args

@@ -1,13 +1,9 @@
 import json
 import os
 import uuid
-from copy import deepcopy
 
-from app.core.algorithms import brute_force
 from app.utils.common_utils import format_agent_data
-
 from app.utils.constants import JSON_SAVE_PATH
-
 
 class DataCollector:
     """
@@ -17,8 +13,10 @@ class DataCollector:
         results: data aggregated through scenario execution.
     """
 
-    def __init__(self, algorithms):
+    def __init__(self, algorithms, uuid_file_map):
         self.results = {algo_name: [] for algo_name in algorithms}
+        self.uuid_file_map = uuid_file_map
+        self.algorithms = algorithms
 
     def log(self, trial, iteration, system, algorithm):
         """
@@ -36,106 +34,79 @@ class DataCollector:
             "system": system
         })
 
-    def clear_data(self, algorithms):
-        """ Reset simulation data to initialization"""
-        self.results = {algo_name: [] for algo_name in algorithms}
-
-    def format_results_data(self):
-        """ format results into nested dict, algo -> trial num -> iteration data """
-        formatted_results = {algo: {} for algo in self.results}
-        for entry in self.results:
-            for iteration_data in self.results[entry]:
-                trial = iteration_data["trial"]
-                if trial not in formatted_results[entry]:
-                    formatted_results[entry][trial] = []
-                formatted_results[entry][trial].append(iteration_data)
-        return formatted_results
-
-    def summarize_results(self, save_files_per_trial, run_args):
+    def summarize_results(self, save_file_per_trial, run_args, optimal_score):
         """
         Compile all stored data in self.results.
 
         Attributes:
-            save_files_per_trial: dict of trial -> system json uuid used that trial
+            save_file_per_trial: trial num -> system json uuid saved for this trial
         """
-        formatted_results = self.format_results_data()
+        for algo in self.results.keys():
+            trial_num = self.results[algo][0]['trial']
+            sim_summary = {trial_num: {}}
+            final_sys = self.results[algo][-1]["system"]
 
-        for algo in formatted_results.keys():
-            # set up output data, keyed by trial number
-            unique_trials = list(range(0, len(formatted_results[algo])))
-            sim_summary = {trial: {} for trial in unique_trials}
+            agents = final_sys.agents
+            sim_score = final_sys.system_score()
+            coverage_map = final_sys.resource_coverage
+            resources = final_sys.resources
+            formatted_resources = []
+            for resource in resources:
+                formatted_resources.append((resource.id, resource.value))
+            max_cover = final_sys.M
+            formatted_agents = format_agent_data(agents)
 
-            for trial, data in formatted_results[algo].items():
-                # get the system from trial 0 iteration 1
-                original_system = [entry for entry in data if entry["iteration"] == 1][0].get("system")
+            # pull the final state of agent decisions
+            agent_actions = {}
+            for agent in agents:
+                res_list = []
+                for resource in agent.current_action:
+                    res_list.append((resource.id, resource.value))
+                agent_actions[agent.id] = res_list
 
-                for agent in original_system.agents:
-                    agent.current_action = set()
+            resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
+            over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
+                                 coverage_map[resource.id] > max_cover}
 
-                # get the system from final trial final iteration
-                final_system = formatted_results[algo][trial][-1]["system"]
+            overhead_actions, net_contributions, agent_action_count = DataCollector.calculate_overhead_net_contribution_actions(data=self.results[algo])
+            best_system, best_iteration = DataCollector.get_best_system_iter(data=self.results[algo])
 
-                brute_force_score = brute_force(deepcopy(original_system))[0]
-                if brute_force_score == 0:
-                    print("No resources can be covered by this system")
-                    return -1
-
-                agents = final_system.agents
-                sim_score = final_system.system_score()
-                coverage_map = final_system.resource_coverage
-                resources = final_system.resources
-                formatted_resources = []
-                for resource in resources:
-                    formatted_resources.append((resource.id, resource.value))
-                max_cover = final_system.M
-                formatted_agents = format_agent_data(agents)
-
-                # pull the final state of agent decisions
-                agent_actions = {}
-                for agent in agents:
-                    res_list = []
-                    for resource in agent.current_action:
-                        res_list.append((resource.id, resource.value))
-                    agent_actions[agent.id] = res_list
-
-                resources_covered = sum(1 for resource in resources if coverage_map[resource.id] >= max_cover)
-                over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
-                                     coverage_map[resource.id] > max_cover}
-                overhead_actions, net_contributions = DataCollector.calculate_overhead_net_contribution(data=data)
-                best_system, best_iteration = DataCollector.get_best_system_iter(data=data)
-
-                sim_summary[trial] = ({
-                    "max_cover": max_cover,
-                    "num_agents": len(agents),
-                    "agent_ids": [a.id for a in agents],
-                    "action_sets": formatted_agents,
-                    "agent_allocations": agent_actions,
-                    "num_resources": len(resources),
-                    "resource_values": formatted_resources,
-                    "resource_coverage": coverage_map,
-                    "resource_coverage_percentage": resources_covered / len(resources),
-                    "over_covered_resources": over_coverage_map,
-                    "max_possible_score": brute_force_score,
-                    "simulation_score": sim_score,
-                    "grade": str((sim_score / brute_force_score) * 100) + "%",
-                    "best_system_coverage": format_agent_data(best_system.agents),
-                    "best_system_score": best_system.system_score(),
-                    "iteration_of_best_system": best_iteration,
-                    "agent_total_actions": DataCollector.count_agent_actions(data=data),
-                    "resource_popularity": DataCollector.calculate_resource_popularity(data=data),
-                    "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
-                                                                                      coverage=coverage_map,
-                                                                                      M=max_cover),
-                    "agent_overhead_actions": overhead_actions,
-                    "agent_net_contribution": net_contributions,
-                    "sys_convergence_iteration": data[-1]["iteration"]+1,
-                    "output_file_UUID": save_files_per_trial[trial],
-                    # "run_args": run_args
-                })
+            # TODO:: examine more how GA is working with this data collection
+            sim_summary[trial_num] = ({
+                "max_cover": max_cover,
+                "num_agents": len(agents),
+                "agent_ids": [a.id for a in agents],
+                "action_sets": formatted_agents,
+                "agent_allocations": agent_actions,
+                "num_resources": len(resources),
+                "resource_values": formatted_resources,
+                "resource_coverage": coverage_map,
+                "resource_coverage_percentage": resources_covered / len(resources),
+                "over_covered_resources": over_coverage_map,
+                "max_possible_score": optimal_score,
+                "simulation_score": sim_score,
+                "grade": str((sim_score / optimal_score) * 100) + "%",
+                "best_system_score": best_system.system_score(),
+                "iteration_of_best_system": best_iteration,
+                "agent_total_actions": agent_action_count,
+                "resource_popularity": DataCollector.calculate_resource_popularity(data=self.results[algo]),
+                "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
+                                                                                  coverage=coverage_map,
+                                                                                  M=max_cover),
+                "agent_overhead_actions": overhead_actions,
+                "agent_net_contribution": net_contributions,
+                "sys_convergence_iteration": self.results[algo][-1]["iteration"]+1,
+                "output_file_UUID": save_file_per_trial[trial_num],
+                "run_args": run_args[algo]
+            })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,
-                                    f"{uuid.uuid4()}.json")
+                                    f"{self.uuid_file_map[algo]}.json")
+
             DataCollector.export_to_json(sim_summary, filename)
+
+        # clear results to save memory
+        self.results = {algo_name: [] for algo_name in self.algorithms}
 
     @staticmethod
     def get_best_system_iter(data):
@@ -158,7 +129,7 @@ class DataCollector:
         return best_system_iter
 
     @staticmethod
-    def calculate_overhead_net_contribution(data):
+    def calculate_overhead_net_contribution_actions(data):
         """
         Calculate how many agent actions did not increase overall score (overhead).
         Calculate net contribution of agents. (sum of how all actions have changed overall system score)
@@ -169,14 +140,15 @@ class DataCollector:
             agent_overhead_counts: how many actions did not increase overall system score
             agent_net_contributions: agents net contribution to system score
         """
-        initial_system = data[0].get("system")
+        initial_system = data[0]['system']
         agent_actions = {agent.id: agent.current_action for agent in initial_system.agents}
+        agent_action_counts = {agent.id: 0 for agent in initial_system.agents}
         agent_overhead_action_counts = {agent.id: 0 for agent in initial_system.agents}
         agent_net_contributions = {agent.id: 0 for agent in initial_system.agents}
         prev_sys_score = initial_system.system_score()
 
         for iteration_data in data[1:]:
-            system = iteration_data.get("system")
+            system = iteration_data['system']
             sys_score = system.system_score()
             for agent in system.agents:
                 curr_action = {r.id for r in agent.current_action}
@@ -187,12 +159,13 @@ class DataCollector:
 
                 if curr_action != prev_action:
                     agent_net_contributions[agent.id] += (sys_score - prev_sys_score)
+                    agent_action_counts[agent.id] += 1
 
                 agent_actions[agent.id] = agent.current_action
 
             prev_sys_score = sys_score
 
-        return agent_overhead_action_counts, agent_net_contributions
+        return agent_overhead_action_counts, agent_net_contributions, agent_action_counts
 
     @staticmethod
     def calculate_resource_popularity(data):
@@ -244,34 +217,6 @@ class DataCollector:
             agent_action_contributions[agent.id] = system_contribution
         return agent_action_contributions
 
-    @staticmethod
-    def count_agent_actions(data):
-        """
-        Calculate per agent how many times they have "changed their minds"
-
-        Attributes:
-            data: all iteration data for a single trial
-        Returns:
-            agent_action_counts: count of how many times the agent changed their current action
-        """
-        # get initial agent actions
-        agent_actions = {agent.id: agent.current_action for agent in data[0].get("system").agents}
-        agent_action_counts = {agent.id: 0 for agent in data[0].get("system").agents}
-
-        for iteration_data in data[1:]:
-            system = iteration_data.get("system")
-
-            for agent in system.agents:
-                # if the agent has changed their mind from the last iteration, count it
-                curr_action = {r.id for r in agent.current_action}
-                prev_action = {r.id for r in agent_actions[agent.id]}
-
-                if curr_action != prev_action:
-                    agent_action_counts[agent.id] += 1
-
-                agent_actions[agent.id] = agent.current_action
-
-        return agent_action_counts
 
     @staticmethod
     def export_to_json(data, file_name):
@@ -285,5 +230,19 @@ class DataCollector:
             None
         """
         os.makedirs(os.path.dirname(file_name), exist_ok=True)
+
+        # Check if file exists and load existing data
+        if os.path.exists(file_name):
+            with open(file_name, "r") as file:
+                try:
+                    prev_trial = json.load(file)
+                except json.JSONDecodeError:
+                    prev_trial = {}  # Start fresh if the file is corrupted
+        else:
+            prev_trial = {}
+
+        prev_trial.update(data)
+
+        # Write back to file
         with open(file_name, "w") as file:
-            json.dump(data, file, indent=4)
+            json.dump(prev_trial, file, indent=4)

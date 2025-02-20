@@ -2,12 +2,15 @@ import random
 from copy import deepcopy
 from itertools import product
 from math import exp
+import numpy as np
 
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.models.genetic_algorithm import GeneticAlgorithm
 from app.utils.common_utils import generate_animation
 from app.utils.common_utils import format_agent_data
+
+from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE, GENETIC_RESPONSE
 
 
 def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
@@ -25,8 +28,11 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
     :param conv_iter: how many iterations the system state must remain the same for the system to be converged
     :return: system score after running simulation
     """
-    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using best_response algorithm.")
+    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {BEST_RESPONSE} algorithm.")
     iteration = 0
+
+    if data_collector is not None:
+        data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
 
     # list for rendering simulation gif files
     systems = []
@@ -48,14 +54,14 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
         agent.current_action = set(best_action)
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), "best_response")
+            data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
 
         if iteration % conv_iter == 0:
             past_systems = systems[-conv_iter:]
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
                 print(
-                    f"\nBest response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"\n{BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
@@ -91,9 +97,12 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
     :return: system score after running simulation
     """
     print(
-        f"Beginning trial {trial_num} with {max_iterations} iterations and beta: {beta} using approximate_best_response algorithm.")
+        f"Beginning trial {trial_num} with {max_iterations} iterations and beta: {beta} using {APPROX_BEST_RESPONSE} algorithm.")
 
     iteration = 0
+
+    if data_collector is not None:
+        data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
 
     # list for rendering simulation gif files
     systems = []
@@ -139,14 +148,14 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
                 print(
-                    f"\nApproximate Best response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"\n{APPROX_BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), "approximate_best_response")
+            data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
 
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
@@ -183,9 +192,13 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
         return 0
 
     print(
-        f"Beginning trial {trial_num} with {max_iterations} iterations and temperature: {temperature} using logit_response algorithm.")
+        f"Beginning trial {trial_num} with {max_iterations} iterations and temperature: {temperature} using {LOGIT_RESPONSE}.")
 
     iteration = 0
+
+    # pass reference to initial system
+    if data_collector is not None:
+        data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
 
     # list for rendering simulation gif files
     systems = []
@@ -200,12 +213,16 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
             for action in agent.action_set
         }
 
-        # Define probability distribution for all actions in action set
+        scores = np.array(list(action_scores.values()))
+        max_score = np.max(scores)
+        exp_scores = np.exp((scores - max_score) / temperature)
+        sum_scaled_scores = np.sum(exp_scores)
 
-        sum_scaled_scores = sum([exp(action_score * (1 / temperature)) for action_score in action_scores.values()])
+        probabilities = {
+            action: np.exp((score - max_score) / temperature) / sum_scaled_scores
+            for action, score in action_scores.items()
+        }
 
-        probabilities = {action: exp(score * (1 / temperature)) / sum_scaled_scores for action, score in
-                         action_scores.items()}
         selected_action = random.choices(
             population=list(probabilities.keys()),
             weights=list(probabilities.values()),
@@ -219,14 +236,14 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
             if calculate_system_convergence(past_systems, system):
                 score = system.system_score()
                 print(
-                    f"\nLogit response system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"\n{LOGIT_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
                 return score
 
         systems.append(deepcopy(system))
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), "logit_response")
+            data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
 
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
@@ -244,11 +261,14 @@ def genetic_response(system=None, max_iterations=50, data_collector=None, trial_
                      population_size=0, mutation_rate=0.5, tournament_k=0.1, num_parents=2,
                      generational_size=0.9, k_crossover=1):
     print(
-        f"Creating population {trial_num} with {max_iterations} total generations using genetic_response.\n"
+        f"Creating population {trial_num} with {max_iterations} total generations using {GENETIC_RESPONSE}.\n"
         f"population_size: {population_size}\nmutation_rate: {mutation_rate}\ntournament_k: {tournament_k}\nnum_parents: {num_parents}\n"
         f"generational_size: {generational_size}\nk_crossover: {k_crossover}\n")
 
     iteration = 0
+
+    if data_collector is not None:
+        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE)
 
     # list for rendering simulation gif files
     ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
@@ -266,11 +286,11 @@ def genetic_response(system=None, max_iterations=50, data_collector=None, trial_
 
         if convergence:
             print(
-                f"\nGenetic response system converged on iteration {iteration} with a final system score of {score}.\n")
+                f"\n{GENETIC_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n")
 
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), "genetic_response")
+            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE)
 
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
@@ -433,5 +453,6 @@ function_map = {
     "best_response": best_response,
     "approximate_best_response": approximate_best_response,
     "logit_response": logit_response,
-    "genetic_response": genetic_response
+    "genetic_response": genetic_response,
+    "brute_force": brute_force
 }
