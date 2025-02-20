@@ -92,7 +92,7 @@ class GeneticAlgorithm:
         self.population_size = new_pop_size
         self.population = new_population
 
-
+    ## TODO:: look into gradient descent
     def mutate_individual(self, individual):
         # force an agent to choose a random action within their set based on mutation_rate
         for agent in individual.agents:

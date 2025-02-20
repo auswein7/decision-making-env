@@ -149,7 +149,7 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
             data_collector.log(trial_num, iteration, deepcopy(system), "approximate_best_response")
 
         # Log progress every 10000 iterations
-        if iteration % 100 == 0:
+        if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
     if generate_graphics:

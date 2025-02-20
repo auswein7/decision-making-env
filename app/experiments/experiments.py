@@ -191,6 +191,7 @@ def conduct_parameter_analysis(args, param_name):
         if algorithm == LOGIT_RESPONSE:
             generate_param_analysis_plot(temperature_vals, score_history, "Temperature")
 
+        ## TODO:: REFACTOR< THIS IS TORING ALL DATA FOR TRIALS, MEMORY USAGE IS MASSIVE
         data_collector.summarize_results([save_file] * num_trials, args)
 
 
