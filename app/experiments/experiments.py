@@ -15,8 +15,7 @@ from app.core.data_collector import DataCollector
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import export_scenario_to_json
 from app.utils.common_utils import generate_param_analysis_plot
-from app.utils.constants import JSON_SAVE_PATH, JSON_LOAD_PATH, APPROX_BEST_RESPONSE, MAX_BETA, BETA_STEP_SIZE, \
-    LOGIT_RESPONSE, MAX_TEMP, TEMP_STEP_SIZE, BRUTE_FORCE
+from app.utils.constants import *
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
@@ -193,8 +192,10 @@ def conduct_parameter_analysis(args, param_name):
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
         score_history = []
-        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        # optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        optimal_score = 1
         save_file_per_trial = {}
+
         keys_to_exclude = ["system", "data_collector"]
 
         for trial in range(num_trials):

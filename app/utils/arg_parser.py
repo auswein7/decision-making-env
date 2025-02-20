@@ -207,5 +207,13 @@ def read_app_properties():
         help="Amount of partitions to make in parent agent actions when forming new generation of individuals"
     )
 
+
+    parser.add_argument(
+        "--batch_wake_up",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('batch_wake_up', "False").lower() in ['true', '1', 'yes'],
+        help="Boolean to generate simulation graphics after each trial"
+    )
+
     args = parser.parse_args()
     return args

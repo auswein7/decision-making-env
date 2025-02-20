@@ -1,7 +1,6 @@
 import random
 from copy import deepcopy
 from itertools import product
-from math import exp
 import numpy as np
 
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
@@ -12,6 +11,8 @@ from app.utils.common_utils import format_agent_data
 
 from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE, GENETIC_RESPONSE
 
+#TODO:: make more efficient by only storing past scores[:cov_iter] not systems.
+# TODO:: remove gif generator, slow and not informative
 
 def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
                   conv_iter=float("inf")):
@@ -305,7 +306,7 @@ GIVE AGENT ACTION SET COVERAGE AND RESOURCE VALUES"""
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
     """
-    Compute optimal system score using a LP model.
+    Compute optimal system score using LP model.
 
     :param system: object containing all experiment data
     :return: optimal system score
@@ -425,7 +426,7 @@ def brute_force(system=None):
 
 def calculate_system_convergence(sys_history, curr_sys):
     """
-    Compute optimal system score using a LP model.
+    Compute system convergence based on stability of system score.
 
     :param sys_history: N previous systems based on passed convergence_iteration parameter
     :param curr_sys: current system at this iteration
@@ -454,5 +455,6 @@ function_map = {
     "approximate_best_response": approximate_best_response,
     "logit_response": logit_response,
     "genetic_response": genetic_response,
+    "ilp_response": ilp_response,
     "brute_force": brute_force
 }
