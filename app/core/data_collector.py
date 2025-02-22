@@ -1,6 +1,5 @@
 import json
 import os
-import uuid
 
 from app.utils.common_utils import format_agent_data
 from app.utils.constants import JSON_SAVE_PATH
