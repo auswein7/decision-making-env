@@ -1,8 +1,6 @@
 import random
 from copy import deepcopy
 
-# TODO:: USE NUM PARENTS PARAM
-
 class GeneticAlgorithm:
 
     def __init__(self, population_size, mutation_rate, k, num_parents, generational_size, k_cross):

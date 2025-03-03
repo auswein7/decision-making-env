@@ -17,6 +17,11 @@ from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPO
 # TODO:: Eventually refactor all probability dist functions to be one func. Pass in the distribution from external
 # TODO:: distribution class
 
+def probability_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
+                  conv_iter=float("inf")):
+    return 0
+
+
 def best_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
                   conv_iter=float("inf")):
     """

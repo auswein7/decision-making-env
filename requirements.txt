@@ -6,3 +6,4 @@ matplotlib~=3.8.2
 networkx~=3.4.2
 pulp~=2.9.0
 numpy~=1.26.2
+unittest

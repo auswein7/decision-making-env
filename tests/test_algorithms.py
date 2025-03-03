@@ -25,11 +25,10 @@ def test_logit_response():
     assert system.score > 0  # Ensure the system score improves
 
 
-# TODO:: fix this test
 def test_genetic_response():
     system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    genetic_response(system, max_iterations=100)
-    assert system.score > 0
+    score = genetic_response(system, population_size=100)
+    assert score > 0
 
 
 # TODO:: fix this test
