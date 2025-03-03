@@ -10,11 +10,12 @@ from app.utils.common_utils import format_agent_data
 
 from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE, GENETIC_RESPONSE
 
-#TODO:: make more efficient by only storing past scores[:cov_iter] not systems.
-# TODO:: remove gif generator, slow and not informative
 
 # TODO:: need to visualize the decision of the agents. How would I visualize the probability distributions
 # TODO:: over multiple iterations?
+
+# TODO:: Eventually refactor all probability dist functions to be one func. Pass in the distribution from external
+# TODO:: distribution class
 
 def best_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
                   conv_iter=float("inf")):
@@ -23,22 +24,22 @@ def best_response(system=None, max_iterations=50, data_collector=None, trial_num
     The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
     overall system score.
 
-    :param trial_num: current simulation trial
-    :param data_collector: class to save data from simulation and export to json
     :param system: object containing all experiment data
     :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param conv_iter: how many iterations the system state must remain the same for the system to be converged
+    :param data_collector: class to save data from simulation and export to json
+    :param trial_num: current simulation trial
+    :param conv_iter: how many iterations the system score must remain the same for the system to have converged
     :return: system score after running simulation
     """
     print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {BEST_RESPONSE} algorithm.")
     iteration = 0
 
+    # Log initial state
     if data_collector is not None:
         data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
 
-    # list for rendering simulation gif files
-    systems = []
-
+    # list for system convergence calculation
+    system_scores = []
     while iteration < max_iterations:
         iteration += 1
         agent = random.choice(system.agents)
@@ -55,27 +56,28 @@ def best_response(system=None, max_iterations=50, data_collector=None, trial_num
         best_action = random.choice(best_actions)
         agent.current_action = set(best_action)
 
+        # calculate system score after agent has chosen action
+        system.system_score()
+
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
 
         if iteration % conv_iter == 0:
-            past_systems = systems[-conv_iter:]
-            if calculate_system_convergence(past_systems, system):
-                score = system.system_score()
+            if calculate_system_convergence(system_scores, system):
                 print(
-                    f"\n{BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
+                    f"\n{BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
-                return score
+                return system.score
+            # clear, need to maintain memory
+            system_scores = []
 
-        systems.append(deepcopy(system))
+        system_scores.append(system.score)
 
         # Print progress every 10000 iterations
         if iteration % 100 == 0:
-            print(f"Iteration {iteration}: System Score = {system.system_score()}")
+            print(f"Iteration {iteration}: System Score = {system.score}")
 
-    score = system.system_score()
-
-    return score
+    return system.score
 
 
 def approximate_best_response(system=None, max_iterations=50, beta=0.5, data_collector=None,
@@ -99,11 +101,12 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, data_col
 
     iteration = 0
 
+    # Log initial state
     if data_collector is not None:
         data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
 
-    # list for rendering simulation gif files
-    systems = []
+    # list for system convergence calculation
+    system_scores = []
 
     while iteration < max_iterations:
         iteration += 1
@@ -141,27 +144,28 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, data_col
             max_resource_set = max(list(agent.action_set), key=lambda s: sum(r.value for r in s))
             agent.current_action = max_resource_set
 
-        if iteration % conv_iter == 0:
-            past_systems = systems[-conv_iter:]
-            if calculate_system_convergence(past_systems, system):
-                score = system.system_score()
-                print(
-                    f"\n{APPROX_BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
-                    f"Simulation score stable for {conv_iter} iterations.\n")
-                return score
+        # calculate system score after agent has chosen action
+        system.system_score()
 
-        systems.append(deepcopy(system))
+        if iteration % conv_iter == 0:
+            if calculate_system_convergence(system_scores, system):
+                print(
+                    f"\n{APPROX_BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
+                    f"Simulation score stable for {conv_iter} iterations.\n")
+                return system.score
+            # clear, need to maintain memory
+            system_scores = []
+
+        system_scores.append(system.score)
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
 
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
-            print(f"Iteration {iteration}: System Score = {system.system_score()}")
+            print(f"Iteration {iteration}: System Score = {system.score}")
 
-    score = system.system_score()
-
-    return score
+    return system.score
 
 
 # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6858606
@@ -194,9 +198,8 @@ def logit_response(system=None, max_iterations=50, data_collector=None, trial_nu
     if data_collector is not None:
         data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
 
-    # list for rendering simulation gif files
-    systems = []
-
+    # list for system convergence calculation
+    system_scores = []
     while iteration < max_iterations:
         iteration += 1
         agent = random.choice(system.agents)
@@ -225,32 +228,33 @@ def logit_response(system=None, max_iterations=50, data_collector=None, trial_nu
 
         agent.current_action = set(selected_action)
 
-        if iteration % conv_iter == 0:
-            past_systems = systems[-conv_iter:]
-            if calculate_system_convergence(past_systems, system):
-                score = system.system_score()
-                print(
-                    f"\n{LOGIT_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n"
-                    f"Simulation score stable for {conv_iter} iterations.\n")
-                return score
+        # calculate system score after action is chosen
+        system.system_score()
 
-        systems.append(deepcopy(system))
+        if iteration % conv_iter == 0:
+            if calculate_system_convergence(system_scores, system):
+                print(
+                    f"\n{LOGIT_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
+                    f"Simulation score stable for {conv_iter} iterations.\n")
+                return system.score
+            # clear, need to maintain memory
+            system_scores = []
+
+        system_scores.append(system.score)
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
 
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
-            print(f"Iteration {iteration}: System Score = {system.system_score()}")
+            print(f"Iteration {iteration}: System Score = {system.score}")
 
-    score = system.system_score()
-
-    return score
+    return system.score
 
 
-def genetic_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
-                     population_size=0, mutation_rate=0.5, tournament_k=0.1, num_parents=2,
-                     generational_size=0.9, k_crossover=1):
+def genetic_response(system=None, max_iterations=10000, data_collector=None, trial_num=0,
+                     population_size=1000, mutation_rate=0.33, tournament_k=100, num_parents=2,
+                     generational_size=0.98, k_crossover=1):
     print(
         f"Creating population {trial_num} with {max_iterations} total generations using {GENETIC_RESPONSE}.\n"
         f"population_size: {population_size}\nmutation_rate: {mutation_rate}\ntournament_k: {tournament_k}\nnum_parents: {num_parents}\n"
@@ -258,10 +262,10 @@ def genetic_response(system=None, max_iterations=50, data_collector=None, trial_
 
     iteration = 0
 
+    # pass initial state
     if data_collector is not None:
         data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE)
 
-    # list for rendering simulation gif files
     ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
                           num_parents, generational_size, k_crossover)
     ga.create_population(system)
@@ -273,25 +277,28 @@ def genetic_response(system=None, max_iterations=50, data_collector=None, trial_
         ga.evaluate_fitness()
 
         most_fit_sys = max(ga.population, key=lambda x: x[1])[0]
-        score = most_fit_sys.system_score()
 
-        if convergence:
-            print(
-                f"\n{GENETIC_RESPONSE} system converged on iteration {iteration} with a final system score of {score}.\n")
-
+        # compute score of best system
+        most_fit_sys.system_score()
 
         if data_collector is not None:
             data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE)
 
+        if convergence:
+            print(
+                f"\n{GENETIC_RESPONSE} system converged on iteration {iteration} with a final system score of {most_fit_sys.score}.\n")
+            return most_fit_sys.score
+
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
-            print(f"Iteration {iteration}: System Score = {score}")
+            print(f"Iteration {iteration}: System Score = {most_fit_sys.score}")
 
-    return most_fit_sys.system_score()
+    return most_fit_sys.score
 
 
 """ BELOW FUNCTIONS CONTAIN ALGORITHMS THAT WILL DETERMINISTICALLY COMPUTE THE MAXIMUM ATTAINABLE SYSTEM SCORE
 GIVE AGENT ACTION SET COVERAGE AND RESOURCE VALUES"""
+
 
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
@@ -377,7 +384,7 @@ def ilp_response(system=None):
 
     print("BF SCORE: ", brute_force(system))
 
-    return system.system_score()
+    return system.score
 
 
 def brute_force(system=None):
@@ -395,7 +402,6 @@ def brute_force(system=None):
     all_agent_action_sets = [agent.action_set for agent in agents]
 
     best_score = float('-inf')
-    best_coverage = None
 
     # iterate over all combinations of agent actions and find best score
     for actions_combination in product(*all_agent_action_sets):
@@ -405,28 +411,26 @@ def brute_force(system=None):
         score = system.system_score()
         if score > best_score:
             best_score = score
-            best_coverage = system.resource_coverage
 
     # reset agent allocations
     for agent in system.agents:
         agent.current_action = set()
 
-    return best_score, best_coverage
+    return best_score
 
 
-def calculate_system_convergence(sys_history, curr_sys):
+def calculate_system_convergence(score_history, curr_sys):
     """
     Compute system convergence based on stability of system score.
 
-    :param sys_history: N previous systems based on passed convergence_iteration parameter
+    :param score_history: Conv_iter previous system scores
     :param curr_sys: current system at this iteration
     :return: true if system has converged, false otherwise.
     """
     score_sim_count = 0
     score = curr_sys.score
-    score_history = [system.score for system in list(reversed(sys_history))]
     # has the system score converged
-    for idx, prev_score in enumerate(score_history):
+    for idx, prev_score in enumerate(reversed(score_history)):
         # if the score is still improving do not terminate
         if prev_score < score:
             return False
@@ -434,7 +438,7 @@ def calculate_system_convergence(sys_history, curr_sys):
             score_sim_count += 1
         score = prev_score
 
-    if score_sim_count >= len(sys_history):
+    if score_sim_count >= len(score_history):
         return True
     return False
 

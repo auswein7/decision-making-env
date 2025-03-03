@@ -47,7 +47,7 @@ class DataCollector:
             final_sys = self.results[algo][-1]["system"]
 
             agents = final_sys.agents
-            sim_score = final_sys.system_score()
+            sim_score = final_sys.score
             coverage_map = final_sys.resource_coverage
             resources = final_sys.resources
             formatted_resources = []
@@ -71,7 +71,6 @@ class DataCollector:
             overhead_actions, net_contributions, agent_action_count = DataCollector.calculate_overhead_net_contribution_actions(data=self.results[algo])
             best_system, best_iteration = DataCollector.get_best_system_iter(data=self.results[algo])
 
-            # TODO:: examine more how GA is working with this data collection
             sim_summary[trial_num] = ({
                 "max_cover": max_cover,
                 "num_agents": len(agents),
@@ -86,7 +85,7 @@ class DataCollector:
                 "max_possible_score": optimal_score,
                 "simulation_score": sim_score,
                 "grade": str((sim_score / optimal_score) * 100) + "%",
-                "best_system_score": best_system.system_score(),
+                "best_system_score": best_system.score,
                 "iteration_of_best_system": best_iteration,
                 "agent_total_actions": agent_action_count,
                 "resource_popularity": DataCollector.calculate_resource_popularity(data=self.results[algo]),
@@ -122,7 +121,7 @@ class DataCollector:
         best_system_iter = None
         for iteration, iteration_data in enumerate(data):
             system = iteration_data["system"]
-            sim_score = system.system_score()
+            sim_score = system.score
             if max_score < sim_score:
                 max_score = sim_score
                 best_system_iter = system, iteration + 1
@@ -145,11 +144,11 @@ class DataCollector:
         agent_action_counts = {agent.id: 0 for agent in initial_system.agents}
         agent_overhead_action_counts = {agent.id: 0 for agent in initial_system.agents}
         agent_net_contributions = {agent.id: 0 for agent in initial_system.agents}
-        prev_sys_score = initial_system.system_score()
+        prev_sys_score = initial_system.score
 
         for iteration_data in data[1:]:
             system = iteration_data['system']
-            sys_score = system.system_score()
+            sys_score = system.score
             for agent in system.agents:
                 curr_action = {r.id for r in agent.current_action}
                 prev_action = {r.id for r in agent_actions[agent.id]}

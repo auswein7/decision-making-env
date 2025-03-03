@@ -41,7 +41,6 @@ class GeneticAlgorithm:
 
         tournament = [(self.population[i][0], self.population[i][1]) for i in tournament_indices]
         winner = max(tournament, key=lambda x: x[1])
-        # TODO:: DO I NEED TO REMOVE WINNERS FROM THE POPULATION?
         return winner[0]
 
     def crossover(self, p1, p2):
@@ -92,7 +91,6 @@ class GeneticAlgorithm:
         self.population_size = new_pop_size
         self.population = new_population
 
-    ## TODO:: look into gradient descent
     def mutate_individual(self, individual):
         # force an agent to choose a random action within their set based on mutation_rate
         for agent in individual.agents:

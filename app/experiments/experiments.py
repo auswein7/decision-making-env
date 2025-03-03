@@ -9,7 +9,7 @@ from app.models.agent import Agent
 
 from app.core.system import System
 from app.core.algorithms import function_map
-from app.core.utils import system_utility
+from app.core.utils import global_visibility_utility
 from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
@@ -21,16 +21,16 @@ from app.utils.constants import *
 def generate_problem_instance(num_resources, num_agents, action_size_range,
                               action_subset_size_range, m, resource_val_range, num_trials):
     """
-    Create resources, agents, and System.
+    Create the System.
 
-    :param num_trials: number of trials, need to create a system object per trial
     :param num_resources: number of resources to add to system
     :param num_agents: number of agents to add to system
     :param action_size_range: range for size of each action set
     :param action_subset_size_range: range for size of each subset of resources
     :param m: maximum cover
     :param resource_val_range: range for resource value
-    :return: newly created system given parameters
+    :param num_trials: number of trials, need to create a system object per trial
+    :return: system_dict: dictionary of trial_num -> system object
     """
     system_dict = {i: None for i in range(num_trials)}
 
@@ -44,7 +44,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
                 action_set.add(frozenset(action))
             agents.append(Agent(i, action_set))
 
-        system_dict[trial] = System(resources, agents, m, system_utility)
+        system_dict[trial] = System(resources, agents, m, global_visibility_utility)
     return system_dict
 
 
@@ -62,11 +62,11 @@ def run_from_json(args):
                                    uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
 
     system = load_scenario_from_json(JSON_LOAD_PATH)
-    optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+    optimal_score = function_map.get(BRUTE_FORCE)(system)
     print(f"Optimal System score for this configuration {optimal_score:.2f}")
 
     algo_func_args = {algo: {} for algo in algorithms}
-    keys_to_exclude = ["system", "data_collector"]
+    keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
     sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
     for algorithm in algorithms:
         _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
@@ -92,11 +92,11 @@ def run_experiments(args):
     analyze_temp = args.analyze_temperature
 
     if analyze_beta:
-        conduct_parameter_analysis(args, "beta")
+        conduct_parameter_analysis(args, BETA)
         return
 
     if analyze_temp:
-        conduct_parameter_analysis(args, "temp")
+        conduct_parameter_analysis(args, TEMP)
         return
 
     algorithms = args.algorithm.split(',')
@@ -129,14 +129,16 @@ def run_experiments(args):
     # set up data collector
     data_collector = DataCollector(algorithms=algorithms,
                                    uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
-    save_file_per_trial = {}
+    saved_system_file = {}
     algo_func_args = {algo: {} for algo in algorithms}
-    keys_to_exclude = ["system", "data_collector"]
+    keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
 
     for trial, system in system_dict.items():
-        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        optimal_score = function_map.get(BRUTE_FORCE)(system)
         print(f"Optimal System score for this configuration {optimal_score:.2f}")
-        save_file_per_trial[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
+
+        #save an instance of the system object to json, file uuid stored in run summary
+        saved_system_file[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
         for algorithm in algorithms:
             _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
                                                  beta=beta, data_collector=data_collector,
@@ -148,26 +150,33 @@ def run_experiments(args):
 
             algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
 
-        data_collector.summarize_results(save_file_per_trial, algo_func_args, optimal_score)
+        data_collector.summarize_results(saved_system_file, algo_func_args, optimal_score)
 
 
 def conduct_parameter_analysis(args, param_name):
+    """
+    Parse arguments from CMD or app.props, create a system, run targeted parameter analysis.
+
+    :param args: command line arguments, or default values from application.properties
+    :param param_name: target parameter for current experiment
+    :return: none
+    """
+    num_trials = args.num_trials
+    beta = args.beta
+    temperature = args.temperature
+
     algorithm = ""
     beta_vals = []
     temperature_vals = []
     param_score_history = {}
 
-    num_trials = args.num_trials
-    beta = args.beta
-    temperature = args.temperature
-
-    if param_name == "beta":
+    if param_name == BETA:
         algorithm = APPROX_BEST_RESPONSE
         beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
         param_score_history = {f"{beta:.2f}": [] for beta in beta_vals}
         num_trials = len(beta_vals)
         temperature_vals = np.zeros(num_trials)
-    if param_name == "temp":
+    if param_name == TEMP:
         algorithm = LOGIT_RESPONSE
         temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
         param_score_history = {f"{temp:.2f}": [] for temp in temperature_vals}
@@ -192,30 +201,29 @@ def conduct_parameter_analysis(args, param_name):
         system = generate_problem_instance(num_resources, num_agents,
                                            (agent_action_len_lb, agent_action_len_ub),
                                            (agent_subset_len_lb, agent_subset_len_ub),
-                                           m, (resource_val_lb, resource_val_ub), 1)[0]
+                                           m, (resource_val_lb, resource_val_ub), 1)[0]  # pull dict val
 
         data_collector = DataCollector(algorithms=[algorithm], uuid_file_map={algorithm: str(uuid.uuid4())})
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
         score_history = []
-        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        optimal_score = function_map.get(BRUTE_FORCE)(system)
         # optimal_score = 1
         print(f"Optimal System score for this configuration {optimal_score:.2f}")
-        save_file_per_trial = {}
+        saved_system_file = {}
 
-        keys_to_exclude = ["system", "data_collector"]
-        func_args = None
-
+        keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
         for trial in range(num_trials):
-            scores = []
-            save_file_per_trial[trial] = save_file
+            repetition_scores = []
+            # save an instance of the system object to json, file uuid stored in run summary
+            saved_system_file[trial] = save_file
             for repetition in range(trial_repetitions):
                 score, func_args = call_target_algorithm(algorithm=algorithm, system=system,
                                                          max_iterations=iter_per_trial, beta=beta_vals[trial],
                                                          data_collector=data_collector,
                                                          trial_num=trial, conv_iter=sys_convergence,
                                                          temperature=temperature_vals[trial])
-                scores.append(score)
+                repetition_scores.append(score)
 
                 beta_key = f"{beta_vals[trial]:.2f}"
                 temp_key = f"{temperature_vals[trial]:.2f}"
@@ -226,9 +234,9 @@ def conduct_parameter_analysis(args, param_name):
                     param_score_history[temp_key].append(score)
 
                 func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
-                data_collector.summarize_results(save_file_per_trial, {algorithm: func_args}, optimal_score)
+                data_collector.summarize_results(saved_system_file, {algorithm: func_args}, optimal_score)
 
-            score_history.append(np.mean(scores))
+            score_history.append(np.mean(repetition_scores))
 
         # Averaged over all repetitions
         if algorithm == APPROX_BEST_RESPONSE:
@@ -245,7 +253,8 @@ def call_target_algorithm(algorithm, **kwargs):
 
     :param algorithm: target algorithm to invoke, holds the name of the algorithm
     :param kwargs: additional arguments to pass to the algorithm
-    :return: none
+    :return: score of system after running target algorithm
+             filtered_args: arguments to pass to the target algorithm for summary
     """
     algo = function_map.get(algorithm)
     if not algo:
