@@ -129,13 +129,6 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--generate_graphics",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('generate_graphics', "False").lower() in ['true', '1', 'yes'],
-        help="Boolean to generate simulation graphics after each trial"
-    )
-
-    parser.add_argument(
         "--algorithm",
         type=str,
         default=str(config['DEFAULT'].get('algorithm', "")),
@@ -207,6 +200,13 @@ def read_app_properties():
         help="Amount of partitions to make in parent agent actions when forming new generation of individuals"
     )
 
+    parser.add_argument(
+        "--trial_repetitions",
+        type=int,
+        default=int(config['DEFAULT'].get('trial_repetitions', "1")),
+        help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
+             "averages."
+    )
 
     parser.add_argument(
         "--batch_wake_up",

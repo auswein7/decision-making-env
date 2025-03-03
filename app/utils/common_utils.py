@@ -2,6 +2,7 @@ import uuid
 import json
 import os
 import io
+import numpy as np
 
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -226,6 +227,38 @@ def generate_param_analysis_plot(x, y, var_name):
     plt.savefig(filename, dpi=300)
     plt.close()
 
+
+def generate_histogram_analysis_plot(data, var_name, bins, sys_optimal):
+    """
+    Generate individual histograms for each param val and save separately to same dir.
+
+    :param sys_optimal: highest possible score given sys config. Used for norm [0, optimal]
+    :param bins: Histogram bin count
+    :param data: Dict of param val -> scores over trial_repetitions
+    :param var_name: Variable name used for file naming and titles
+    """
+    folder_path = os.path.join(JSON_SAVE_PATH, f"{var_name}_histograms")
+    os.makedirs(folder_path, exist_ok=True)
+
+    normalized_data = {
+        param: np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores)
+        for param, scores in data.items()
+    }
+
+    bins = np.linspace(0, 1, bins)
+
+    for (param, scores) in normalized_data.items():
+        plt.figure(figsize=(8, 5))
+        plt.hist(scores, bins=bins, alpha=0.7, color="blue", edgecolor='black')
+
+        plt.xlabel('Normalized System Score', fontsize=10)
+        plt.ylabel('Occurrences', fontsize=10)
+        plt.title(f'Histogram for {var_name} {param}', fontsize=12)
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+        filename = os.path.join(folder_path, f"{var_name}_{param}.png")
+        plt.savefig(filename, dpi=300)
+        plt.close()
 
 def format_agent_data(agents):
     """

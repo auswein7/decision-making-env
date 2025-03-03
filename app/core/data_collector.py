@@ -33,6 +33,7 @@ class DataCollector:
             "system": system
         })
 
+    # TODO:: push to a database, probably mongoDB
     def summarize_results(self, save_file_per_trial, run_args, optimal_score):
         """
         Compile all stored data in self.results.
@@ -220,28 +221,41 @@ class DataCollector:
     @staticmethod
     def export_to_json(data, file_name):
         """
-        Find the final contribution per agent given the resources they chose to cover.
+        Store the simulation summary data over repeated trials.
 
         Attributes:
-            data: full simulation summary data
-            file_name: file name
+            data: Dictionary containing simulation results {trial_number: data}
+            file_name: JSON file where the data should be stored
         Returns:
             None
         """
         os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
-        # Check if file exists and load existing data
         if os.path.exists(file_name):
             with open(file_name, "r") as file:
                 try:
-                    prev_trial = json.load(file)
+                    prev_trials = json.load(file)
                 except json.JSONDecodeError:
-                    prev_trial = {}  # Start fresh if the file is corrupted
+                    prev_trials = {}
         else:
-            prev_trial = {}
+            prev_trials = {}
 
-        prev_trial.update(data)
+        # Iterate over new data entries
+        for trial_key, trial_data in data.items():
+            trial_key = str(trial_key)
+            if trial_key in prev_trials:
+                # Find next available key with decimal increments
+                suffix = 1
+                new_key = f"{trial_key}.{suffix}"
+                while new_key in prev_trials:
+                    suffix += 1
+                    new_key = f"{trial_key}.{suffix}"
+                prev_trials[new_key] = trial_data
+            else:
+                prev_trials[trial_key] = trial_data
 
         # Write back to file
         with open(file_name, "w") as file:
-            json.dump(prev_trial, file, indent=4)
+            json.dump(prev_trials, file, indent=4)
+
+

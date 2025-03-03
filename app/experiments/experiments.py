@@ -14,7 +14,7 @@ from app.core.data_collector import DataCollector
 
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.common_utils import export_scenario_to_json
-from app.utils.common_utils import generate_param_analysis_plot
+from app.utils.common_utils import generate_param_analysis_plot, generate_histogram_analysis_plot
 from app.utils.constants import *
 
 
@@ -56,24 +56,24 @@ def run_from_json(args):
     beta = args.beta
     temperature = args.temperature
     sys_convergence = args.system_convergence_iter
-    generate_graphics = args.generate_graphics
 
     # set up data collector
-    data_collector = DataCollector(algorithms=algorithms, uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
+    data_collector = DataCollector(algorithms=algorithms,
+                                   uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
 
     system = load_scenario_from_json(JSON_LOAD_PATH)
     optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+    print(f"Optimal System score for this configuration {optimal_score:.2f}")
 
     algo_func_args = {algo: {} for algo in algorithms}
     keys_to_exclude = ["system", "data_collector"]
     sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
     for algorithm in algorithms:
-        _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                              generate_graphics=generate_graphics, data_collector=data_collector, trial_num=1,
-                              cov_iter=sys_convergence,
-                              temperature=temperature)
-
-
+        _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
+                                             beta=beta,
+                                             data_collector=data_collector, trial_num=1,
+                                             cov_iter=sys_convergence,
+                                             temperature=temperature)
 
         algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
 
@@ -103,7 +103,6 @@ def run_experiments(args):
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
     temperature = args.temperature
-    generate_graphics = args.generate_graphics
     num_trials = args.num_trials
     num_resources = args.num_resources
     num_agents = args.num_agents
@@ -128,21 +127,24 @@ def run_experiments(args):
                                             m, (resource_val_lb, resource_val_ub), num_trials)
 
     # set up data collector
-    data_collector = DataCollector(algorithms=algorithms, uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
+    data_collector = DataCollector(algorithms=algorithms,
+                                   uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
     save_file_per_trial = {}
-    algo_func_args = {algo:{} for algo in algorithms}
+    algo_func_args = {algo: {} for algo in algorithms}
     keys_to_exclude = ["system", "data_collector"]
 
     for trial, system in system_dict.items():
         optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        print(f"Optimal System score for this configuration {optimal_score:.2f}")
         save_file_per_trial[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
         for algorithm in algorithms:
-            _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta,
-                                  generate_graphics=generate_graphics, data_collector=data_collector,
-                                  trial_num=trial, conv_iter=sys_convergence, temperature=temperature,
-                                  population_size=population_size,
-                                  mutation_rate=mutation_rate, tournament_k=tournament_k, num_parents=num_parents,
-                                  generational_size=generational_size, k_crossover=k_crossover)
+            _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
+                                                 beta=beta, data_collector=data_collector,
+                                                 trial_num=trial, conv_iter=sys_convergence, temperature=temperature,
+                                                 population_size=population_size,
+                                                 mutation_rate=mutation_rate, tournament_k=tournament_k,
+                                                 num_parents=num_parents,
+                                                 generational_size=generational_size, k_crossover=k_crossover)
 
             algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
 
@@ -153,6 +155,7 @@ def conduct_parameter_analysis(args, param_name):
     algorithm = ""
     beta_vals = []
     temperature_vals = []
+    param_score_history = {}
 
     num_trials = args.num_trials
     beta = args.beta
@@ -161,13 +164,16 @@ def conduct_parameter_analysis(args, param_name):
     if param_name == "beta":
         algorithm = APPROX_BEST_RESPONSE
         beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
+        param_score_history = {f"{beta:.2f}": [] for beta in beta_vals}
         num_trials = len(beta_vals)
         temperature_vals = np.zeros(num_trials)
     if param_name == "temp":
         algorithm = LOGIT_RESPONSE
         temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
+        param_score_history = {f"{temp:.2f}": [] for temp in temperature_vals}
         num_trials = len(temperature_vals)
         beta_vals = np.zeros(num_trials)
+
     if algorithm != "":
         iter_per_trial = args.iterations_per_trial
         num_resources = args.num_resources
@@ -179,8 +185,8 @@ def conduct_parameter_analysis(args, param_name):
         agent_action_len_ub = args.agent_action_len_ub
         agent_subset_len_lb = args.agent_subset_len_lb
         agent_subset_len_ub = args.agent_subset_len_ub
-        generate_graphics = args.generate_graphics
         sys_convergence = args.system_convergence_iter
+        trial_repetitions = args.trial_repetitions
 
         # only one system configuration for this analysis
         system = generate_problem_instance(num_resources, num_agents,
@@ -192,28 +198,45 @@ def conduct_parameter_analysis(args, param_name):
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
         score_history = []
-        # optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
-        optimal_score = 1
+        optimal_score, _ = function_map.get(BRUTE_FORCE)(system)
+        # optimal_score = 1
+        print(f"Optimal System score for this configuration {optimal_score:.2f}")
         save_file_per_trial = {}
 
         keys_to_exclude = ["system", "data_collector"]
+        func_args = None
 
         for trial in range(num_trials):
+            scores = []
             save_file_per_trial[trial] = save_file
-            score, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial, beta=beta_vals[trial],
-                                          generate_graphics=generate_graphics, data_collector=data_collector,
-                                          trial_num=trial, conv_iter=sys_convergence, temperature=temperature_vals[trial])
-            score_history.append(score)
+            for repetition in range(trial_repetitions):
+                score, func_args = call_target_algorithm(algorithm=algorithm, system=system,
+                                                         max_iterations=iter_per_trial, beta=beta_vals[trial],
+                                                         data_collector=data_collector,
+                                                         trial_num=trial, conv_iter=sys_convergence,
+                                                         temperature=temperature_vals[trial])
+                scores.append(score)
 
-            func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
-            data_collector.summarize_results(save_file_per_trial, {algorithm:func_args}, optimal_score)
+                beta_key = f"{beta_vals[trial]:.2f}"
+                temp_key = f"{temperature_vals[trial]:.2f}"
 
+                if beta_key in param_score_history:
+                    param_score_history[beta_key].append(score)
+                if temp_key in param_score_history:
+                    param_score_history[temp_key].append(score)
+
+                func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
+                data_collector.summarize_results(save_file_per_trial, {algorithm: func_args}, optimal_score)
+
+            score_history.append(np.mean(scores))
+
+        # Averaged over all repetitions
         if algorithm == APPROX_BEST_RESPONSE:
-            generate_param_analysis_plot(beta_vals, score_history, "Beta")
+            generate_param_analysis_plot(beta_vals, score_history, BETA)
+            generate_histogram_analysis_plot(param_score_history, BETA, HIST_BINS, optimal_score)
         if algorithm == LOGIT_RESPONSE:
-            generate_param_analysis_plot(temperature_vals, score_history, "Temperature")
-
-
+            generate_param_analysis_plot(temperature_vals, score_history, TEMP)
+            generate_histogram_analysis_plot(param_score_history, TEMP, HIST_BINS, optimal_score)
 
 
 def call_target_algorithm(algorithm, **kwargs):

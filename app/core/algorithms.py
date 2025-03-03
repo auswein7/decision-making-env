@@ -6,7 +6,6 @@ import numpy as np
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.models.genetic_algorithm import GeneticAlgorithm
-from app.utils.common_utils import generate_animation
 from app.utils.common_utils import format_agent_data
 
 from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE, GENETIC_RESPONSE
@@ -14,7 +13,10 @@ from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPO
 #TODO:: make more efficient by only storing past scores[:cov_iter] not systems.
 # TODO:: remove gif generator, slow and not informative
 
-def best_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
+# TODO:: need to visualize the decision of the agents. How would I visualize the probability distributions
+# TODO:: over multiple iterations?
+
+def best_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
                   conv_iter=float("inf")):
     """
     Randomly select agents from system, evaluate the best action for the agent.
@@ -23,7 +25,6 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
 
     :param trial_num: current simulation trial
     :param data_collector: class to save data from simulation and export to json
-    :param generate_graphics: boolean to enable graphics generation
     :param system: object containing all experiment data
     :param max_iterations: iteration count for given system, each new trial will reset this value
     :param conv_iter: how many iterations the system state must remain the same for the system to be converged
@@ -74,13 +75,10 @@ def best_response(system=None, max_iterations=50, generate_graphics=False, data_
 
     score = system.system_score()
 
-    if generate_graphics:
-        generate_animation(systems=systems)
-
     return score
 
 
-def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate_graphics=False, data_collector=None,
+def approximate_best_response(system=None, max_iterations=50, beta=0.5, data_collector=None,
                               trial_num=0, conv_iter=float("inf")):
     """
     Randomly select agents from system, evaluate all action scores for the agent. Scale each action
@@ -89,7 +87,6 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
 
     :param trial_num: current simulation trial
     :param data_collector: class to save data from simulation and export to json
-    :param generate_graphics: boolean to enable graphics generation
     :param beta: passed in value to weight resource values
                  if beta == 0: random choice, if beta == 1: best_response
     :param system: object containing all experiment data
@@ -162,16 +159,13 @@ def approximate_best_response(system=None, max_iterations=50, beta=0.5, generate
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
 
-    if generate_graphics:
-        generate_animation(systems=systems)
-
     score = system.system_score()
 
     return score
 
 
 # https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6858606
-def logit_response(system=None, max_iterations=50, generate_graphics=False, data_collector=None, trial_num=0,
+def logit_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
                    temperature=1,
                    conv_iter=float("inf")):
     """
@@ -180,7 +174,6 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
 
     :param trial_num: current simulation trial
     :param data_collector: class to save data from simulation and export to json
-    :param generate_graphics: boolean to enable graphics generation
     :param temperature: passed in value to weight resource values
                  if temperature == inf: random choice, if temperature == 0.1: best_response
     :param system: object containing all experiment data
@@ -249,9 +242,6 @@ def logit_response(system=None, max_iterations=50, generate_graphics=False, data
         # Log progress every 10000 iterations
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.system_score()}")
-
-    if generate_graphics:
-        generate_animation(systems=systems)
 
     score = system.system_score()
 
