@@ -3,6 +3,7 @@ import inspect
 
 import numpy as np
 import uuid
+import time
 
 from app.models.resource import Resource
 from app.models.agent import Agent
@@ -48,8 +49,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     return system_dict
 
 
-# TODO:: run from json when conducting beta/temp trial
-# TODO:: run from json with newly added params, make sure it works for all algorithms
+# TODO:: out of date function, update
 def run_from_json(args):
     algorithms = args.algorithm.split(',')
     iter_per_trial = args.iterations_per_trial
@@ -66,7 +66,7 @@ def run_from_json(args):
     print(f"Optimal System score for this configuration {optimal_score:.2f}")
 
     algo_func_args = {algo: {} for algo in algorithms}
-    keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
+    keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
     sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
     for algorithm in algorithms:
         _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
@@ -99,7 +99,8 @@ def run_experiments(args):
         conduct_parameter_analysis(args, TEMP)
         return
 
-    algorithms = args.algorithm.split(',')
+    algorithm = args.algorithm
+    distributions = args.distribution.split(',')
     iter_per_trial = args.iterations_per_trial
     beta = args.beta
     temperature = args.temperature
@@ -120,6 +121,7 @@ def run_experiments(args):
     num_parents = args.num_parents
     generational_size = args.generational_size
     k_crossover = args.k_crossover
+    batch_wake_up = args.batch_wake_up
 
     system_dict = generate_problem_instance(num_resources, num_agents,
                                             (agent_action_len_lb, agent_action_len_ub),
@@ -127,26 +129,33 @@ def run_experiments(args):
                                             m, (resource_val_lb, resource_val_ub), num_trials)
 
     # set up data collector
-    data_collector = DataCollector(algorithms=algorithms,
-                                   uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
+    algo_dist_names = [f"{algorithm}:{dist}" for dist in distributions]
+    data_collector = DataCollector(algorithms=algo_dist_names,
+                                   uuid_file_map={algo_dist: str(uuid.uuid4()) for algo_dist in algo_dist_names})
     saved_system_file = {}
-    algo_func_args = {algo: {} for algo in algorithms}
-    keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
+    algo_func_args = {algo: {} for algo in algo_dist_names}
+    keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
 
     for trial, system in system_dict.items():
+        print("Calculating system optimal score")
+        start_t = time.time()
         optimal_score = function_map.get(BRUTE_FORCE)(system)
-        print(f"Optimal System score for this configuration {optimal_score:.2f}")
+        end_t = time.time()
+        print(
+            f"Optimal System score for this configuration {optimal_score:.2f}, calculated in {end_t - start_t:.2f} seconds")
 
-        #save an instance of the system object to json, file uuid stored in run summary
+        # save an instance of the system object to json, file uuid stored in run summary
         saved_system_file[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
-        for algorithm in algorithms:
-            _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
+        for dist in distributions:
+            _, func_args = call_target_algorithm(algorithm=algorithm, distribution=dist, system=system,
+                                                 max_iterations=iter_per_trial,
                                                  beta=beta, data_collector=data_collector,
                                                  trial_num=trial, conv_iter=sys_convergence, temperature=temperature,
                                                  population_size=population_size,
                                                  mutation_rate=mutation_rate, tournament_k=tournament_k,
                                                  num_parents=num_parents,
-                                                 generational_size=generational_size, k_crossover=k_crossover)
+                                                 generational_size=generational_size, k_crossover=k_crossover,
+                                                 batch_wake_up=batch_wake_up)
 
             algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
 
@@ -165,19 +174,20 @@ def conduct_parameter_analysis(args, param_name):
     beta = args.beta
     temperature = args.temperature
 
-    algorithm = ""
+    algorithm = PROB_RESPONSE
+    distribution = ""
     beta_vals = []
     temperature_vals = []
     param_score_history = {}
 
     if param_name == BETA:
-        algorithm = APPROX_BEST_RESPONSE
+        distribution = APPROX_BEST_RESPONSE
         beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
         param_score_history = {f"{beta:.2f}": [] for beta in beta_vals}
         num_trials = len(beta_vals)
         temperature_vals = np.zeros(num_trials)
     if param_name == TEMP:
-        algorithm = LOGIT_RESPONSE
+        distribution = LOGIT_RESPONSE
         temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
         param_score_history = {f"{temp:.2f}": [] for temp in temperature_vals}
         num_trials = len(temperature_vals)
@@ -196,6 +206,7 @@ def conduct_parameter_analysis(args, param_name):
         agent_subset_len_ub = args.agent_subset_len_ub
         sys_convergence = args.system_convergence_iter
         trial_repetitions = args.trial_repetitions
+        batch_wake_up = args.batch_wake_up
 
         # only one system configuration for this analysis
         system = generate_problem_instance(num_resources, num_agents,
@@ -203,26 +214,32 @@ def conduct_parameter_analysis(args, param_name):
                                            (agent_subset_len_lb, agent_subset_len_ub),
                                            m, (resource_val_lb, resource_val_ub), 1)[0]  # pull dict val
 
-        data_collector = DataCollector(algorithms=[algorithm], uuid_file_map={algorithm: str(uuid.uuid4())})
+        data_key = f"{algorithm}:{distribution}"
+        data_collector = DataCollector(algorithms=[data_key], uuid_file_map={data_key: str(uuid.uuid4())})
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
 
         score_history = []
+        print("Calculating system optimal score")
+        start_t = time.time()
         optimal_score = function_map.get(BRUTE_FORCE)(system)
+        end_t = time.time()
         # optimal_score = 1
-        print(f"Optimal System score for this configuration {optimal_score:.2f}")
+        print(
+            f"Optimal System score for this configuration {optimal_score:.2f}, calculated in {end_t - start_t:.2f} seconds")
         saved_system_file = {}
 
-        keys_to_exclude = ["system", "data_collector"] # dont include non-serializable data
+        keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
         for trial in range(num_trials):
             repetition_scores = []
             # save an instance of the system object to json, file uuid stored in run summary
             saved_system_file[trial] = save_file
             for repetition in range(trial_repetitions):
-                score, func_args = call_target_algorithm(algorithm=algorithm, system=system,
+                score, func_args = call_target_algorithm(algorithm=algorithm, distribution=distribution, system=system,
                                                          max_iterations=iter_per_trial, beta=beta_vals[trial],
                                                          data_collector=data_collector,
                                                          trial_num=trial, conv_iter=sys_convergence,
-                                                         temperature=temperature_vals[trial])
+                                                         temperature=temperature_vals[trial],
+                                                         batch_wake_up=batch_wake_up)
                 repetition_scores.append(score)
 
                 beta_key = f"{beta_vals[trial]:.2f}"
@@ -234,16 +251,15 @@ def conduct_parameter_analysis(args, param_name):
                     param_score_history[temp_key].append(score)
 
                 func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
-                data_collector.summarize_results(saved_system_file, {algorithm: func_args}, optimal_score)
-
+                data_collector.summarize_results(saved_system_file, {data_key: func_args}, optimal_score)
 
             score_history.append(np.mean(repetition_scores))
 
         # Averaged over all repetitions
-        if algorithm == APPROX_BEST_RESPONSE:
+        if distribution == APPROX_BEST_RESPONSE:
             generate_param_analysis_plot(beta_vals, score_history, BETA)
             generate_histogram_analysis_plot(param_score_history, BETA, HIST_BINS, optimal_score)
-        if algorithm == LOGIT_RESPONSE:
+        if distribution == LOGIT_RESPONSE:
             generate_param_analysis_plot(temperature_vals, score_history, TEMP)
             generate_histogram_analysis_plot(param_score_history, TEMP, HIST_BINS, optimal_score)
 

@@ -96,7 +96,8 @@ class DataCollector:
                 "agent_net_contribution": net_contributions,
                 "sys_convergence_iteration": self.results[algo][-1]["iteration"]+1,
                 "output_file_UUID": save_file_per_trial[trial_num],
-                "run_args": run_args[algo]
+                "run_args": run_args[algo],
+
             })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,

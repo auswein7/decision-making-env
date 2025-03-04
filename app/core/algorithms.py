@@ -6,9 +6,10 @@ import numpy as np
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.models.genetic_algorithm import GeneticAlgorithm
+from app.core.distributions import Distribution
 from app.utils.common_utils import format_agent_data
 
-from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE, GENETIC_RESPONSE
+from app.utils.constants import *
 
 
 # TODO:: need to visualize the decision of the agents. How would I visualize the probability distributions
@@ -17,36 +18,25 @@ from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPO
 # TODO:: Eventually refactor all probability dist functions to be one func. Pass in the distribution from external
 # TODO:: distribution class
 
-def probability_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
-                  conv_iter=float("inf")):
-    return 0
+def probability_response(system=None, distribution="", max_iterations=50, beta=0.5, temperature=1,
+                         data_collector=None, trial_num=0,
+                         conv_iter=float("inf"),
+                         batch_wake_up=1):
+    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {PROB_RESPONSE} algorithm.")
 
+    prob_dist = Distribution(distribution=distribution, beta=beta, temperature=temperature)
 
-def best_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
-                  conv_iter=float("inf")):
-    """
-    Randomly select agents from system, evaluate the best action for the agent.
-    The best action for the agent is what is best for the overall system. Each agent will attempt to maximize
-    overall system score.
-
-    :param system: object containing all experiment data
-    :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param data_collector: class to save data from simulation and export to json
-    :param trial_num: current simulation trial
-    :param conv_iter: how many iterations the system score must remain the same for the system to have converged
-    :return: system score after running simulation
-    """
-    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {BEST_RESPONSE} algorithm.")
     iteration = 0
-
     # Log initial state
+    data_key = PROB_RESPONSE + ":" + distribution
     if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
+        data_collector.log(trial_num, iteration, deepcopy(system), data_key)
 
     # list for system convergence calculation
     system_scores = []
     while iteration < max_iterations:
         iteration += 1
+
         agent = random.choice(system.agents)
 
         # Evaluate all possible actions
@@ -55,22 +45,20 @@ def best_response(system=None, max_iterations=50, data_collector=None, trial_num
             for action in agent.action_set
         }
 
-        # Choose the best action deterministically
-        max_score = max(action_scores.values())
-        best_actions = [a for a in action_scores if action_scores[a] == max_score]
-        best_action = random.choice(best_actions)
+        best_action = prob_dist.get_distribution()(action_scores)
+
         agent.current_action = set(best_action)
 
         # calculate system score after agent has chosen action
         system.system_score()
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), BEST_RESPONSE)
+            data_collector.log(trial_num, iteration, deepcopy(system), data_key)
 
         if iteration % conv_iter == 0:
             if calculate_system_convergence(system_scores, system):
                 print(
-                    f"\n{BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
+                    f"\n{distribution} system converged on iteration {iteration} with a final system score of {system.score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
                 return system.score
             # clear, need to maintain memory
@@ -80,178 +68,6 @@ def best_response(system=None, max_iterations=50, data_collector=None, trial_num
 
         # Print progress every 10000 iterations
         if iteration % 100 == 0:
-            print(f"Iteration {iteration}: System Score = {system.score}")
-
-    return system.score
-
-
-def approximate_best_response(system=None, max_iterations=50, beta=0.5, data_collector=None,
-                              trial_num=0, conv_iter=float("inf")):
-    """
-    Randomly select agents from system, evaluate all action scores for the agent. Scale each action
-    based on passed beta value. Create a probability distribution using these scaled values. Select the
-    most likely action from the probability distribution.
-
-    :param trial_num: current simulation trial
-    :param data_collector: class to save data from simulation and export to json
-    :param beta: passed in value to weight resource values
-                 if beta == 0: random choice, if beta == 1: best_response
-    :param system: object containing all experiment data
-    :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param conv_iter: how many iterations the system state must remain the same for the system to be converged
-    :return: system score after running simulation
-    """
-    print(
-        f"Beginning trial {trial_num} with {max_iterations} iterations and beta: {beta} using {APPROX_BEST_RESPONSE} algorithm.")
-
-    iteration = 0
-
-    # Log initial state
-    if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
-
-    # list for system convergence calculation
-    system_scores = []
-
-    while iteration < max_iterations:
-        iteration += 1
-        agent = random.choice(system.agents)
-
-        # Evaluate all possible actions
-        action_scores = {
-            frozenset(action): agent.evaluate_action(action, system, system.utility_function)
-            for action in agent.action_set
-        }
-
-        max_score = max(action_scores.values())
-        min_score = min(action_scores.values())
-
-        # Create dict of [action -> new scaled score] based on passed beta value
-        scaled_scores = {
-            action: beta * (score - min_score) + (1 - beta) * (max_score - min_score)
-            for action, score in action_scores.items()
-        }
-
-        # Select an action probabilistically based on scaled scores
-        total_scaled_score = sum(scaled_scores.values())
-        if total_scaled_score > 0:
-            probabilities = {action: score / total_scaled_score for action, score in scaled_scores.items()}
-            selected_action = random.choices(
-                population=list(probabilities.keys()),
-                weights=list(probabilities.values()),
-                k=1
-            )[0]
-
-            agent.current_action = set(selected_action)
-        else:
-            # choose to cover the resource with the highest value if all actions results in 0 score to system
-            # value is the sum of all resource values in an action
-            max_resource_set = max(list(agent.action_set), key=lambda s: sum(r.value for r in s))
-            agent.current_action = max_resource_set
-
-        # calculate system score after agent has chosen action
-        system.system_score()
-
-        if iteration % conv_iter == 0:
-            if calculate_system_convergence(system_scores, system):
-                print(
-                    f"\n{APPROX_BEST_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
-                    f"Simulation score stable for {conv_iter} iterations.\n")
-                return system.score
-            # clear, need to maintain memory
-            system_scores = []
-
-        system_scores.append(system.score)
-
-        if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), APPROX_BEST_RESPONSE)
-
-        # Log progress every 10000 iterations
-        if iteration % 1000 == 0:
-            print(f"Iteration {iteration}: System Score = {system.score}")
-
-    return system.score
-
-
-# https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=6858606
-def logit_response(system=None, max_iterations=50, data_collector=None, trial_num=0,
-                   temperature=1,
-                   conv_iter=float("inf")):
-    """
-    Log-linear learning algorithm. Construct probability distributions for agent actions based on
-    passed temperature value.
-
-    :param trial_num: current simulation trial
-    :param data_collector: class to save data from simulation and export to json
-    :param temperature: passed in value to weight resource values
-                 if temperature == inf: random choice, if temperature == 0.1: best_response
-    :param system: object containing all experiment data
-    :param max_iterations: iteration count for given system, each new trial will reset this value
-    :param conv_iter: how many iterations the system state must remain the same for the system to be converged
-    :return: system score after running simulation
-    """
-    if temperature < 0.1:
-        print("Temperature value must be greater than 0.1")
-        return 0
-
-    print(
-        f"Beginning trial {trial_num} with {max_iterations} iterations and temperature: {temperature} using {LOGIT_RESPONSE}.")
-
-    iteration = 0
-
-    # pass reference to initial system
-    if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
-
-    # list for system convergence calculation
-    system_scores = []
-    while iteration < max_iterations:
-        iteration += 1
-        agent = random.choice(system.agents)
-
-        # Evaluate all possible actions
-        action_scores = {
-            frozenset(action): agent.evaluate_action(action, system, system.utility_function)
-            for action in agent.action_set
-        }
-
-        scores = np.array(list(action_scores.values()))
-        max_score = np.max(scores)
-        exp_scores = np.exp((scores - max_score) / temperature)
-        sum_scaled_scores = np.sum(exp_scores)
-
-        probabilities = {
-            action: np.exp((score - max_score) / temperature) / sum_scaled_scores
-            for action, score in action_scores.items()
-        }
-
-        selected_action = random.choices(
-            population=list(probabilities.keys()),
-            weights=list(probabilities.values()),
-            k=1
-        )[0]
-
-        agent.current_action = set(selected_action)
-
-        # calculate system score after action is chosen
-        system.system_score()
-
-        if iteration % conv_iter == 0:
-            if calculate_system_convergence(system_scores, system):
-                print(
-                    f"\n{LOGIT_RESPONSE} system converged on iteration {iteration} with a final system score of {system.score}.\n"
-                    f"Simulation score stable for {conv_iter} iterations.\n")
-                return system.score
-            # clear, need to maintain memory
-            system_scores = []
-
-        system_scores.append(system.score)
-
-        if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(system), LOGIT_RESPONSE)
-
-        # Log progress every 10000 iterations
-        if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.score}")
 
     return system.score
@@ -450,9 +266,7 @@ def calculate_system_convergence(score_history, curr_sys):
 
 # function map indexed by passed algorithm in application.properties
 function_map = {
-    "best_response": best_response,
-    "approximate_best_response": approximate_best_response,
-    "logit_response": logit_response,
+    "probability_response": probability_response,
     "genetic_response": genetic_response,
     "ilp_response": ilp_response,
     "brute_force": brute_force

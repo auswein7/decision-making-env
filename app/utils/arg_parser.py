@@ -136,6 +136,13 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--distribution",
+        type=str,
+        default=str(config['DEFAULT'].get('distribution', "")),
+        help="The probability distribution to use for agent decisions"
+    )
+
+    parser.add_argument(
         "--system_convergence_iter",
         type=int,
         default=int(config['DEFAULT'].get('system_convergence_iter', "0")),
@@ -210,9 +217,9 @@ def read_app_properties():
 
     parser.add_argument(
         "--batch_wake_up",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('batch_wake_up', "False").lower() in ['true', '1', 'yes'],
-        help="Boolean to generate simulation graphics after each trial"
+        type=int,
+        default=int(config['DEFAULT'].get('batch_wake_up', "1")),
+        help="Amount of agents to wake up per iteration"
     )
 
     args = parser.parse_args()

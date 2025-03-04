@@ -1,6 +1,7 @@
 JSON_LOAD_PATH = "scenarios/test_scenario.json" # file path to preload system configurations
 JSON_SAVE_PATH = "app/out" # save directory for all experiment data
 BEST_RESPONSE="best_response"
+PROB_RESPONSE="probability_response"
 APPROX_BEST_RESPONSE = "approximate_best_response"
 LOGIT_RESPONSE = "logit_response"
 GENETIC_RESPONSE = "genetic_response"
@@ -11,4 +12,4 @@ MAX_BETA = 1.0 # maximum beta value when conducting beta analysis
 BETA_STEP_SIZE = 0.05 # amount to change beta by each trial
 MAX_TEMP = 10 # maximum temperature value when conducting temperature analysis
 TEMP_STEP_SIZE = 1 # amount to change temperature by each trial
-HIST_BINS = 10 # amount of bins for histogram generation
+HIST_BINS = 25 # amount of bins for histogram generation
