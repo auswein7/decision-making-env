@@ -1,28 +1,24 @@
 import pytest
 import numpy as np
 
-from app.core.algorithms import best_response, approximate_best_response, logit_response, genetic_response, \
+from app.utils.constants import *
+
+from app.core.algorithms import probability_response, genetic_response, \
     ilp_response, brute_force, calculate_system_convergence
 
 from app.experiments.experiments import generate_problem_instance
 
 
-def test_best_response():
+def test_probability_response():
     system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    best_response(system, max_iterations=100)
-    assert system.score > 0  # Ensure the system score improves
-
-
-def test_approximate_best_response():
-    system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    approximate_best_response(system, max_iterations=100)
-    assert system.score > 0  # Ensure the system score improves
-
-
-def test_logit_response():
-    system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    logit_response(system, max_iterations=100)
-    assert system.score > 0  # Ensure the system score improves
+    probability_response(system, max_iterations=100, distribution=BEST_RESPONSE)
+    assert system.score > 0
+    system.score = 0
+    probability_response(system, max_iterations=100, distribution=APPROX_BEST_RESPONSE)
+    assert system.score > 0
+    system.score = 0
+    probability_response(system, max_iterations=100, distribution=LOGIT_RESPONSE)
+    assert system.score > 0
 
 
 def test_genetic_response():
