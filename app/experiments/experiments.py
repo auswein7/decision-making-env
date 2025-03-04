@@ -157,7 +157,7 @@ def run_experiments(args):
                                                  generational_size=generational_size, k_crossover=k_crossover,
                                                  batch_wake_up=batch_wake_up)
 
-            algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
+            algo_func_args[f"{algorithm}:{dist}"] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
 
         data_collector.summarize_results(saved_system_file, algo_func_args, optimal_score)
 
