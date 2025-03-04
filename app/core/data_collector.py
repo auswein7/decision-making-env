@@ -16,6 +16,7 @@ class DataCollector:
         self.results = {algo_name: [] for algo_name in algorithms}
         self.uuid_file_map = uuid_file_map
         self.algorithms = algorithms
+        self.logged_sys = False
 
     def log(self, trial, iteration, system, algorithm):
         """
@@ -32,6 +33,27 @@ class DataCollector:
             "iteration": iteration,
             "system": system
         })
+
+        if not self.logged_sys:
+            self.logged_sys = True
+
+            formatted_resources = []
+            for resource in system.resources:
+                formatted_resources.append((resource.id, resource.value))
+
+            sys_config_json = {"System_Config": ({
+                "max_cover": system.M,
+                "num_agents": len(system.agents),
+                "agent_ids": [a.id for a in system.agents],
+                "action_sets": format_agent_data(system.agents),
+                "num_resources": len(system.resources),
+                "resource_values": formatted_resources
+            })}
+
+            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algorithm,
+                                    f"{self.uuid_file_map[algorithm]}.json")
+
+            DataCollector.export_to_json(sys_config_json, filename)
 
     # TODO:: push to a database, probably mongoDB
     def summarize_results(self, save_file_per_trial, run_args, optimal_score):
@@ -50,11 +72,7 @@ class DataCollector:
             sim_score = final_sys.score
             coverage_map = final_sys.resource_coverage
             resources = final_sys.resources
-            formatted_resources = []
-            for resource in resources:
-                formatted_resources.append((resource.id, resource.value))
             max_cover = final_sys.M
-            formatted_agents = format_agent_data(agents)
 
             # pull the final state of agent decisions
             agent_actions = {}
@@ -72,13 +90,7 @@ class DataCollector:
             best_system, best_iteration = DataCollector.get_best_system_iter(data=self.results[algo])
 
             sim_summary[trial_num] = ({
-                "max_cover": max_cover,
-                "num_agents": len(agents),
-                "agent_ids": [a.id for a in agents],
-                "action_sets": formatted_agents,
                 "agent_allocations": agent_actions,
-                "num_resources": len(resources),
-                "resource_values": formatted_resources,
                 "resource_coverage": coverage_map,
                 "resource_coverage_percentage": resources_covered / len(resources),
                 "over_covered_resources": over_coverage_map,
@@ -97,7 +109,6 @@ class DataCollector:
                 "sys_convergence_iteration": self.results[algo][-1]["iteration"]+1,
                 "output_file_UUID": save_file_per_trial[trial_num],
                 "run_args": run_args[algo],
-
             })
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,
