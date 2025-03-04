@@ -1,22 +1,13 @@
 import random
 from copy import deepcopy
 from itertools import product
-import numpy as np
-
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.models.genetic_algorithm import GeneticAlgorithm
 from app.core.distributions import Distribution
 from app.utils.common_utils import format_agent_data
-
 from app.utils.constants import *
 
-
-# TODO:: need to visualize the decision of the agents. How would I visualize the probability distributions
-# TODO:: over multiple iterations?
-
-# TODO:: Eventually refactor all probability dist functions to be one func. Pass in the distribution from external
-# TODO:: distribution class
 
 def probability_response(system=None, distribution="", max_iterations=50, beta=0.5, temperature=1,
                          data_collector=None, trial_num=0,
@@ -85,7 +76,7 @@ def genetic_response(system=None, max_iterations=10000, data_collector=None, tri
 
     # pass initial state
     if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE)
+        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE+":")
 
     ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
                           num_parents, generational_size, k_crossover)
@@ -103,7 +94,7 @@ def genetic_response(system=None, max_iterations=10000, data_collector=None, tri
         most_fit_sys.system_score()
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE)
+            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE+":")
 
         if convergence:
             print(

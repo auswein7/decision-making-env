@@ -11,9 +11,6 @@ from app.experiments.experiments import generate_problem_instance
 
 def test_probability_response():
     system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    probability_response(system, max_iterations=100, distribution=BEST_RESPONSE)
-    assert system.score > 0
-    system.score = 0
     probability_response(system, max_iterations=100, distribution=APPROX_BEST_RESPONSE)
     assert system.score > 0
     system.score = 0

@@ -1,6 +1,5 @@
 JSON_LOAD_PATH = "scenarios/test_scenario.json" # file path to preload system configurations
 JSON_SAVE_PATH = "app/out" # save directory for all experiment data
-BEST_RESPONSE="best_response"
 PROB_RESPONSE="probability_response"
 APPROX_BEST_RESPONSE = "approximate_best_response"
 LOGIT_RESPONSE = "logit_response"

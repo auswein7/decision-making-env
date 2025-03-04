@@ -13,19 +13,10 @@ class Distribution:
         self.temperature = temperature
 
     def get_distribution(self):
-        if self.distribution == "best_response":
-            return self.best_response
         if self.distribution == "approximate_best_response":
             return self.approximate_best_response
         if self.distribution == "logit_response":
             return self.logit_response
-
-    def best_response(self, action_scores):
-        # Choose the best action deterministically
-        max_score = max(action_scores.values())
-        best_actions = [a for a in action_scores if action_scores[a] == max_score]
-        best_action = random.choice(best_actions)
-        return best_action
 
     def approximate_best_response(self, action_scores):
         max_score = max(action_scores.values())
@@ -48,7 +39,8 @@ class Distribution:
             )[0]
             return set(selected_action)
         else:
-            return self.best_response(action_scores)
+            best_actions = [a for a in action_scores if action_scores[a] == max_score]
+            return random.choice(best_actions)
 
     def logit_response(self, action_scores):
         scores = np.array(list(action_scores.values()))
