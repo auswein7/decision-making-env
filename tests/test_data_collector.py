@@ -1,6 +1,5 @@
 import unittest
-from app.core.data_collector import DataCollector
-from app.experiments.experiments import run_experiments
+
 
 class DataCollectorTest(unittest.TestCase):
 

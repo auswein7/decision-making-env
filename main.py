@@ -1,6 +1,6 @@
-from app.utils.arg_parser import read_app_properties
 from app.experiments.experiments import run_experiments
 from app.experiments.experiments import run_from_json
+from app.utils.arg_parser import read_app_properties
 
 
 # TODO:: Set up pipeline to auto run unit-tests on push

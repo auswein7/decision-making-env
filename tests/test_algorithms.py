@@ -1,12 +1,9 @@
-import pytest
 import numpy as np
-
-from app.utils.constants import *
 
 from app.core.algorithms import probability_response, genetic_response, \
     ilp_response, brute_force, calculate_system_convergence
-
 from app.experiments.experiments import generate_problem_instance
+from app.utils.constants import *
 
 
 def test_probability_response():

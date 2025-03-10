@@ -1,8 +1,7 @@
-import pytest
-from app.models.resource import Resource
-from app.models.agent import Agent
 from app.core.system import System
 from app.core.utils import global_visibility_utility
+from app.models.agent import Agent
+from app.models.resource import Resource
 
 
 def test_system_initialization():

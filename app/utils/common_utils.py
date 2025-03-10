@@ -1,18 +1,15 @@
-import uuid
 import json
 import os
-import io
-import numpy as np
+import uuid
 
 import matplotlib.pyplot as plt
 import networkx as nx
-from PIL import Image
+import numpy as np
 
 from app.core.system import System
 from app.core.utils import global_visibility_utility
-from app.models.resource import Resource
 from app.models.agent import Agent
-
+from app.models.resource import Resource
 from app.utils.constants import JSON_SAVE_PATH
 
 
@@ -78,7 +75,6 @@ def export_scenario_to_json(system=None, file_path="app/out"):
 
     system_data = {
         "m": system.M,
-        "utility_function": system.utility_function.__name__
     }
 
     simulation_data = {
@@ -145,19 +141,26 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
     plt.savefig(file_name)
 
 
-def generate_param_analysis_plot(x, y, var_name):
+def generate_param_analysis_plot(x, y, var_name, sys_optimal):
     """
     Generate plot given system score per trial, targeting a specific parameter.
 
+
+
     :param x: axis data, parameter value for trial
     :param y: axis data, system score for trial
+    :param var_name: name of the target parameter
+    :param sys_optimal: optimal score for normalization
     :return: None
     """
     filename = os.path.join(JSON_SAVE_PATH, f"{var_name}_vs_sys_score.png")
     os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 
+
+    normalized_data = [np.array(score) / sys_optimal for score in y]
+
     plt.figure(figsize=(8, 5))
-    plt.plot(x, y, marker='o', linestyle='-', linewidth=2, markersize=6)
+    plt.plot(x, normalized_data, marker='o', linestyle='-', linewidth=2, markersize=6)
     plt.xlabel(f"{var_name}", fontsize=12)
     plt.ylabel("System Score per trial", fontsize=12)
     plt.title(f"{var_name} vs System Score", fontsize=14, fontweight='bold')
@@ -185,7 +188,7 @@ def generate_histogram_analysis_plot(data, var_name, bins, sys_optimal):
 
     normalized_data = {
         param: np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores)
-        for param, scores in data.items()
+        for param, scores in data.items() if param[0] == var_name[0]
     }
 
     bins = np.linspace(0, 1, bins)

@@ -1,18 +1,18 @@
 import random
 from copy import deepcopy
 from itertools import product
+
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
-from app.models.genetic_algorithm import GeneticAlgorithm
 from app.core.distributions import Distribution
+from app.models.genetic_algorithm import GeneticAlgorithm
 from app.utils.common_utils import format_agent_data
 from app.utils.constants import *
 
 
 def probability_response(system=None, distribution="", max_iterations=50, beta=0.5, temperature=1,
                          data_collector=None, trial_num=0,
-                         conv_iter=float("inf"),
-                         batch_wake_up=1):
+                         conv_iter=float("inf")):
     print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {PROB_RESPONSE} algorithm.")
 
     prob_dist = Distribution(distribution=distribution, beta=beta, temperature=temperature)
@@ -32,7 +32,7 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
 
         # Evaluate all possible actions
         action_scores = {
-            frozenset(action): agent.evaluate_action(action, system, system.utility_function)
+            frozenset(action): agent.evaluate_action(action, system, agent.utility_function)
             for action in agent.action_set
         }
 
@@ -57,8 +57,8 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
 
         system_scores.append(system.score)
 
-        # Print progress every 10000 iterations
-        if iteration % 100 == 0:
+        # Print progress every 1000 iterations
+        if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.score}")
 
     return system.score
@@ -101,7 +101,7 @@ def genetic_response(system=None, max_iterations=10000, data_collector=None, tri
                 f"\n{GENETIC_RESPONSE} system converged on iteration {iteration} with a final system score of {most_fit_sys.score}.\n")
             return most_fit_sys.score
 
-        # Log progress every 10000 iterations
+        # Log progress every 1000 iterations
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {most_fit_sys.score}")
 
@@ -207,8 +207,7 @@ def brute_force(system=None):
     :return: system score after brute force calculation
              coverage that attained the greatest system score
     """
-    sys_copy = deepcopy(system)
-    agents = sys_copy.agents
+    agents = system.agents
 
     # Extract all possible actions for each agent
     all_agent_action_sets = [agent.action_set for agent in agents]
@@ -227,6 +226,9 @@ def brute_force(system=None):
     # reset agent allocations
     for agent in system.agents:
         agent.current_action = set()
+    # reset coverage map before calling other algorithms
+    system.resource_coverage = {resource.id: 0 for resource in system.resources}
+    system.score = 0
 
     return best_score
 

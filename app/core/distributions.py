@@ -1,5 +1,7 @@
 import random
+
 import numpy as np
+
 
 class Distribution:
     """
@@ -7,7 +9,7 @@ class Distribution:
     """
 
     def __init__(self, distribution, beta, temperature):
-        print(f"Initializing distribution of type {distribution}")
+        print(f"Initializing distribution of type {distribution}. Beta {beta}, Temperature {temperature}.")
         self.distribution = distribution
         self.beta = beta
         self.temperature = temperature

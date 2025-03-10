@@ -143,6 +143,13 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--agent_visibility",
+        type=str,
+        default=str(config['DEFAULT'].get('agent_visibility', "global")),
+        help="Do the agent have access to the overall system score, or their local individual score"
+    )
+
+    parser.add_argument(
         "--system_convergence_iter",
         type=int,
         default=int(config['DEFAULT'].get('system_convergence_iter', "0")),
@@ -213,13 +220,6 @@ def read_app_properties():
         default=int(config['DEFAULT'].get('trial_repetitions', "1")),
         help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
              "averages."
-    )
-
-    parser.add_argument(
-        "--batch_wake_up",
-        type=int,
-        default=int(config['DEFAULT'].get('batch_wake_up', "1")),
-        help="Amount of agents to wake up per iteration"
     )
 
     args = parser.parse_args()

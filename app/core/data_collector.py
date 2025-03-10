@@ -4,6 +4,7 @@ import os
 from app.utils.common_utils import format_agent_data
 from app.utils.constants import JSON_SAVE_PATH
 
+
 class DataCollector:
     """
     DataCollector class to track all simulation data and compile into a simulation summary json.

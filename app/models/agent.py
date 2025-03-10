@@ -8,10 +8,15 @@ class Agent:
         current_action: current coverage of the agent
     """
 
-    def __init__(self, agent_id, action_set):
+    def __init__(self, agent_id, action_set, visibility, utility):
         self.id = agent_id
         self.action_set = action_set
         self.current_action = set()
+        self.visibility = visibility
+        self.utility_function = utility
 
     def evaluate_action(self, action, system, utility_function):
-        return utility_function(self, action, system)
+        if self.visibility == "global":
+            return utility_function(self, action, system)
+        elif self.visibility == "local":
+            return utility_function(self, action, system.resource_coverage, system.M)

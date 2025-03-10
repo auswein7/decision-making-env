@@ -7,15 +7,13 @@ class System:
         resources: resources in the simulation
         agents: agents in the simulation
         M: maximum agent coverage needed to claim a resource
-        utility_function:
         resource_coverage: final coverage count of each resource
     """
 
-    def __init__(self, resources, agents, m, utility_function):
+    def __init__(self, resources, agents, m):
         self.resources = resources
         self.agents = agents
         self.M = m  # max-cover
-        self.utility_function = utility_function
         self.resource_coverage = set()
         self.score = 0
 
