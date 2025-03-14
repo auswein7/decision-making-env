@@ -37,6 +37,9 @@ def local_visibility_utility(agent, action, coverage_map, M):
     for resource in agent.current_action:
         resource_id = resource.id
         resource_value = resource.value
+        #TODO:: for this score, score it for the improvement to the overall system score
+        #TODO:: difference between past action, and the value that the new action will give to the system
+        # TODO:: currently implemented is equal share, above is implementing marginal contribution
         num_agents = coverage_map.get(resource_id, 0) + 1
 
         if num_agents >= M:
@@ -45,17 +48,6 @@ def local_visibility_utility(agent, action, coverage_map, M):
     agent.current_action = previous_action
     return action_score
 
-
-def compute_action_value(action_set, coverage_map, M):
-    total_value = 0
-
-    for resource in action_set:
-        resource_id = resource.id  # Assuming Resource object has an 'id' attribute
-        resource_value = resource.value  # Assuming Resource object has a 'value' attribute
-
-        num_agents = coverage_map.get(resource_id, 0) + 1  # Include the current agent
-
-        if num_agents >= M:
-            total_value += resource_value / num_agents
-
-    return total_value
+# TODO:: add them valuing a resources being alone multiplied by a weighting factor to make it very small. So they
+# TODO:: do not go away from already covering a resource with someone else. What if we set that param to not be close
+# TODO:: to zero? Maybe we should entice the agents to leave the resources?

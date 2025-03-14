@@ -64,7 +64,7 @@ def run_from_json(args):
 
     system = load_scenario_from_json(JSON_LOAD_PATH)
     optimal_score = function_map.get(BRUTE_FORCE)(system)
-    print(f"Optimal System score for this configuration {optimal_score:.2f}")
+    print(f"Optimal System score for this configuration {optimal_score:.3f}")
 
     algo_func_args = {algo: {} for algo in algorithms}
     keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
@@ -149,7 +149,7 @@ def run_experiments(args):
         optimal_score = function_map.get(BRUTE_FORCE)(system)
         end_t = time.time()
         print(
-            f"Optimal System score for this configuration {optimal_score:.2f}, calculated in {end_t - start_t:.2f} seconds")
+            f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
 
         # save an instance of the system object to json, file uuid stored in run summary
         saved_system_file[trial] = export_scenario_to_json(system, JSON_SAVE_PATH)
@@ -190,12 +190,12 @@ def conduct_parameter_analysis(args, b=None, temp=None):
         distribution.append(APPROX_BEST_RESPONSE)
         beta_vals = np.arange(beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE)
         for beta in beta_vals:
-            param_score_history.setdefault(f"b{beta:.2f}", [])
+            param_score_history.setdefault(f"b{beta:.3f}", [])
     if temp is not None:
         distribution.append(LOGIT_RESPONSE)
         temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
         for t in temperature_vals:
-            param_score_history.setdefault(f"t{t:.2f}", [])
+            param_score_history.setdefault(f"t{t:.3f}", [])
 
     num_trials = max(len(temperature_vals), len(beta_vals))
 
@@ -232,7 +232,7 @@ def conduct_parameter_analysis(args, b=None, temp=None):
         optimal_score = function_map.get(BRUTE_FORCE)(system)
         end_t = time.time()
         print(
-            f"Optimal System score for this configuration {optimal_score:.2f}, calculated in {end_t - start_t:.2f} seconds")
+            f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
         saved_system_file = {}
 
         keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
@@ -258,8 +258,8 @@ def conduct_parameter_analysis(args, b=None, temp=None):
                                                                  min(trial, len(temperature_vals) - 1)])
                     repetition_scores.append(score)
 
-                    beta_key = f"b{beta_vals[min(trial, len(beta_vals) - 1)]:.2f}"
-                    temp_key = f"t{temperature_vals[min(trial, len(temperature_vals) - 1)]:.2f}"
+                    beta_key = f"b{beta_vals[min(trial, len(beta_vals) - 1)]:.3f}"
+                    temp_key = f"t{temperature_vals[min(trial, len(temperature_vals) - 1)]:.3f}"
 
                     if beta_key in param_score_history and dist == APPROX_BEST_RESPONSE:
                         param_score_history[beta_key].append(score)
