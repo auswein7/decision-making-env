@@ -7,7 +7,6 @@ import networkx as nx
 import numpy as np
 
 from app.core.system import System
-from app.core.utils import global_visibility_utility
 from app.models.agent import Agent
 from app.models.resource import Resource
 from app.utils.constants import JSON_SAVE_PATH
@@ -40,7 +39,7 @@ def load_scenario_from_json(file_path):
             agent.action_set = {frozenset(action) for action in agent.action_set}
 
         m = data["system"]["m"]
-        sys = System(resources=resources, agents=agents, m=m, utility_function=global_visibility_utility)
+        sys = System(resources=resources, agents=agents, m=m)
         return sys
 
 

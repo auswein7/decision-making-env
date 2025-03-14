@@ -1,53 +1,73 @@
-def global_visibility_utility(agent, action, system):
-    """
-    Test the system score with a potential agent action, agents can see the score of the overall system.
-
-    :param agent: current 'awake' agent
-    :param action: the current candidate action for the agent
-    :param system: current problem layout
-    :return: the score of the system if this action is taken
-    """
+def marginal_contribution_utility(agent, new_action, coverage_map, M):
     previous_action = agent.current_action
-    previous_coverage = system.resource_coverage
+    new_action_score = 0
+    prev_action_score = 0
 
-    agent.current_action = action
-    sys_score = system.system_score()
+    for curr_resource, past_resource in zip(new_action, previous_action):
+        curr_resource_id = curr_resource.id
+        curr_resource_value = curr_resource.value
 
-    agent.current_action = previous_action
-    system.resource_coverage = previous_coverage
-    return sys_score
-
-
-def local_visibility_utility(agent, action, coverage_map, M):
-    """
-    Test the system score with a potential agent action, agents can not see the score of
-    the overall system. Agents receive proportional score if an agent is already covering.
-
-    :param agent: current 'awake' agent
-    :param action: the current candidate action for the agent
-    :param coverage_map: current coverage in the system
-    :param M: overall coverage
-    :return: the score of the system if this action is taken
-    """
-    previous_action = agent.current_action
-    agent.current_action = action
-
-    # evaluate local visibility score, cannot invoke system.score()
-    action_score = 0
-    for resource in agent.current_action:
-        resource_id = resource.id
-        resource_value = resource.value
-        #TODO:: for this score, score it for the improvement to the overall system score
-        #TODO:: difference between past action, and the value that the new action will give to the system
-        # TODO:: currently implemented is equal share, above is implementing marginal contribution
-        num_agents = coverage_map.get(resource_id, 0) + 1
-
+        num_agents = coverage_map.get(curr_resource_id, 0)
         if num_agents >= M:
-            action_score += resource_value / num_agents
+            new_action_score = 0
+        if num_agents + 1 == M:
+            new_action_score += curr_resource_value
 
-    agent.current_action = previous_action
-    return action_score
+        prev_resource_id = past_resource.id
+        prev_resource_value = past_resource.value
 
-# TODO:: add them valuing a resources being alone multiplied by a weighting factor to make it very small. So they
-# TODO:: do not go away from already covering a resource with someone else. What if we set that param to not be close
-# TODO:: to zero? Maybe we should entice the agents to leave the resources?
+        num_agents = coverage_map.get(prev_resource_id, 0)
+        if num_agents >= M:
+            prev_action_score = 0
+        if num_agents + 1 == M:
+            prev_action_score += prev_resource_value
+
+    return new_action_score - prev_action_score
+
+def equal_share_utility(agent, new_action, coverage_map, M):
+    previous_action = agent.current_action
+    new_action_score = 0
+    prev_action_score = 0
+
+    for curr_resource, past_resource in zip(new_action, previous_action):
+        curr_resource_id = curr_resource.id
+        curr_resource_value = curr_resource.value
+
+        num_agents = coverage_map.get(curr_resource_id, 0) + 1
+        if num_agents >= M:
+            new_action_score += curr_resource_value / num_agents
+
+        prev_resource_id = past_resource.id
+        prev_resource_value = past_resource.value
+
+        num_agents = coverage_map.get(prev_resource_id, 0) + 1
+        if num_agents >= M:
+            prev_action_score += prev_resource_value / num_agents
+
+    return new_action_score - prev_action_score
+
+def optimistic_utility(agent, new_action, coverage_map, M, alpha=0.5):
+    previous_action = agent.current_action
+    new_action_score = 0
+    prev_action_score = 0
+
+    for curr_resource, past_resource in zip(new_action, previous_action):
+        curr_resource_id = curr_resource.id
+        curr_resource_value = curr_resource.value
+
+        num_agents = coverage_map.get(curr_resource_id, 0) + 1
+        if num_agents == 1:
+            new_action_score = curr_resource_value * alpha
+        if num_agents >= M:
+            new_action_score += curr_resource_value / num_agents
+
+        prev_resource_id = past_resource.id
+        prev_resource_value = past_resource.value
+
+        num_agents = coverage_map.get(prev_resource_id, 0) + 1
+        if num_agents == 1:
+            prev_action_score = prev_resource_value * alpha
+        if num_agents >= M:
+            prev_action_score += prev_resource_value / num_agents
+
+    return new_action_score - prev_action_score

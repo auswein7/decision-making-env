@@ -8,7 +8,7 @@ import numpy as np
 from app.core.algorithms import function_map
 from app.core.data_collector import DataCollector
 from app.core.system import System
-from app.core.utils import global_visibility_utility, local_visibility_utility
+from app.core.utils import marginal_contribution_utility, equal_share_utility, optimistic_utility
 from app.models.agent import Agent
 from app.models.resource import Resource
 from app.utils.common_utils import export_scenario_to_json
@@ -18,7 +18,7 @@ from app.utils.constants import *
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
-                              action_subset_size_range, m, resource_val_range, num_trials, visibility):
+                              action_subset_size_range, m, resource_val_range, num_trials, util_func):
     """
     Create the System.
 
@@ -29,7 +29,7 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     :param m: maximum cover
     :param resource_val_range: range for resource value
     :param num_trials: number of trials, need to create a system object per trial
-    :param visibility: visibility utility of the agents
+    :param util_func: utility of the agents
     :return: system_dict: dictionary of trial_num -> system object
     """
     system_dict = {i: None for i in range(num_trials)}
@@ -42,10 +42,16 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
             while len(action_set) < random.randint(*action_size_range):
                 action = set(random.sample(resources, random.randint(*action_subset_size_range)))
                 action_set.add(frozenset(action))
-            if visibility == "global":
-                agents.append(Agent(i, action_set, visibility, global_visibility_utility))
-            elif visibility == "local":
-                agents.append(Agent(i, action_set, visibility, local_visibility_utility))
+
+                utility = ""
+                if util_func == MC_UTILITY:
+                    utility = marginal_contribution_utility
+                if util_func == ES_UTILITY:
+                    utility = equal_share_utility
+                if util_func == OPTIMISTIC_UTILITY:
+                    utility = optimistic_utility
+                agents.append(Agent(i, action_set, utility))
+
         system_dict[trial] = System(resources, agents, m)
     return system_dict
 
@@ -128,12 +134,12 @@ def run_experiments(args):
     num_parents = args.num_parents
     generational_size = args.generational_size
     k_crossover = args.k_crossover
-    agent_visibility = args.agent_visibility
+    util_func = args.utility_function
 
     system_dict = generate_problem_instance(num_resources, num_agents,
                                             (agent_action_len_lb, agent_action_len_ub),
                                             (agent_subset_len_lb, agent_subset_len_ub),
-                                            m, (resource_val_lb, resource_val_ub), num_trials, agent_visibility)
+                                            m, (resource_val_lb, resource_val_ub), num_trials, util_func)
 
     # set up data collector
     algo_dist_names = [f"{algorithm}:{dist}" for dist in distributions]
@@ -218,13 +224,13 @@ def conduct_parameter_analysis(args, b=None, temp=None):
         agent_subset_len_ub = args.agent_subset_len_ub
         sys_convergence = args.system_convergence_iter
         trial_repetitions = args.trial_repetitions
-        visibility = args.agent_visibility
+        util_func = args.utility_function
 
         # only one system configuration for this analysis
         system = generate_problem_instance(num_resources, num_agents,
                                            (agent_action_len_lb, agent_action_len_ub),
                                            (agent_subset_len_lb, agent_subset_len_ub),
-                                           m, (resource_val_lb, resource_val_ub), 1, visibility)[0]  # pull dict val
+                                           m, (resource_val_lb, resource_val_ub), 1, util_func)[0]  # pull dict val
 
         save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
         print("Calculating system optimal score")

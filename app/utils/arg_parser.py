@@ -143,10 +143,10 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--agent_visibility",
+        "--utility_function",
         type=str,
-        default=str(config['DEFAULT'].get('agent_visibility', "global")),
-        help="Do the agent have access to the overall system score, or their local individual score"
+        default=str(config['DEFAULT'].get('utility_function', "")),
+        help="How will the agents weight the value of each resource relative to other agents presence"
     )
 
     parser.add_argument(
