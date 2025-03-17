@@ -52,8 +52,6 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
                     f"\n{distribution} system converged on iteration {iteration} with a final system score of {system.score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
                 return system.score
-            # clear, need to maintain memory
-            system_scores = []
 
         system_scores.append(system.score)
 
@@ -61,7 +59,7 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.score}")
 
-    return system.score
+    return sum(system_scores[-100:]) / min(100, len(system_scores))
 
 
 def genetic_response(system=None, max_iterations=10000, data_collector=None, trial_num=0,
@@ -76,7 +74,7 @@ def genetic_response(system=None, max_iterations=10000, data_collector=None, tri
 
     # pass initial state
     if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE+":")
+        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE + ":")
 
     ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
                           num_parents, generational_size, k_crossover)
@@ -94,7 +92,7 @@ def genetic_response(system=None, max_iterations=10000, data_collector=None, tri
         most_fit_sys.system_score()
 
         if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE+":")
+            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE + ":")
 
         if convergence:
             print(

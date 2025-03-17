@@ -8,6 +8,7 @@ BRUTE_FORCE = "brute_force"
 MC_UTILITY = "marginal_contribution"
 ES_UTILITY = "equal_share"
 OPTIMISTIC_UTILITY = "optimistic"
+DEFAULT_OPTIMISTIC_ALPHA = 0.1
 BETA = "beta"
 TEMP = "temp"
 MAX_BETA = 1.0 # maximum beta value when conducting beta analysis

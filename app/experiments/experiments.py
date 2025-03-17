@@ -13,7 +13,6 @@ from app.models.agent import Agent
 from app.models.resource import Resource
 from app.utils.common_utils import export_scenario_to_json
 from app.utils.common_utils import generate_param_analysis_plot, generate_histogram_analysis_plot
-from app.utils.common_utils import load_scenario_from_json
 from app.utils.constants import *
 
 
@@ -43,48 +42,23 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
                 action = set(random.sample(resources, random.randint(*action_subset_size_range)))
                 action_set.add(frozenset(action))
 
-                utility = ""
-                if util_func == MC_UTILITY:
-                    utility = marginal_contribution_utility
-                if util_func == ES_UTILITY:
-                    utility = equal_share_utility
-                if util_func == OPTIMISTIC_UTILITY:
-                    utility = optimistic_utility
-                agents.append(Agent(i, action_set, utility))
+            utility = ""
+            if util_func == MC_UTILITY:
+                utility = marginal_contribution_utility
+            if util_func == ES_UTILITY:
+                utility = equal_share_utility
+            if util_func == OPTIMISTIC_UTILITY:
+                utility = optimistic_utility
+
+            agents.append(Agent(i, action_set, utility))
 
         system_dict[trial] = System(resources, agents, m)
     return system_dict
 
 
-# TODO:: out of date function, update
+# TODO:: implement
 def run_from_json(args):
-    algorithms = args.algorithm.split(',')
-    iter_per_trial = args.iterations_per_trial
-    beta = args.beta
-    temperature = args.temperature
-    sys_convergence = args.system_convergence_iter
-
-    # set up data collector
-    data_collector = DataCollector(algorithms=algorithms,
-                                   uuid_file_map={algo: str(uuid.uuid4()) for algo in algorithms})
-
-    system = load_scenario_from_json(JSON_LOAD_PATH)
-    optimal_score = function_map.get(BRUTE_FORCE)(system)
-    print(f"Optimal System score for this configuration {optimal_score:.3f}")
-
-    algo_func_args = {algo: {} for algo in algorithms}
-    keys_to_exclude = ["system", "data_collector"]  # dont include non-serializable data
-    sim_json = export_scenario_to_json(system, JSON_SAVE_PATH)
-    for algorithm in algorithms:
-        _, func_args = call_target_algorithm(algorithm=algorithm, system=system, max_iterations=iter_per_trial,
-                                             beta=beta,
-                                             data_collector=data_collector, trial_num=1,
-                                             cov_iter=sys_convergence,
-                                             temperature=temperature)
-
-        algo_func_args[algorithm] = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
-
-    data_collector.summarize_results([sim_json], algo_func_args, optimal_score)
+    return 0
 
 
 def run_experiments(args):
@@ -199,7 +173,11 @@ def conduct_parameter_analysis(args, b=None, temp=None):
             param_score_history.setdefault(f"b{beta:.3f}", [])
     if temp is not None:
         distribution.append(LOGIT_RESPONSE)
-        temperature_vals = np.arange(temperature, MAX_TEMP + TEMP_STEP_SIZE, TEMP_STEP_SIZE)
+        temperature_vals = np.logspace(
+            np.log10(temperature), np.log10(MAX_TEMP),
+            num=int(np.log2(MAX_TEMP / temperature)) + 1,
+            base=10
+        )
         for t in temperature_vals:
             param_score_history.setdefault(f"t{t:.3f}", [])
 
@@ -275,6 +253,7 @@ def conduct_parameter_analysis(args, b=None, temp=None):
                     func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
                     data_collector.summarize_results(saved_system_file, {data_key: func_args}, optimal_score)
 
+                # TODO:: make this score history the average of the past n repetitions
                 score_history.append(np.mean(repetition_scores))
 
             # Averaged over all repetitions
