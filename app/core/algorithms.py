@@ -30,6 +30,7 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
 
         agent = random.choice(system.agents)
 
+        # TODO:: Should agents be allowed to not change their action?
         # Evaluate all possible actions
         action_scores = {
             frozenset(action): agent.evaluate_action(action, system, agent.utility_function)

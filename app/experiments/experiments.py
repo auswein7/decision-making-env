@@ -251,7 +251,7 @@ def conduct_parameter_analysis(args, b=None, temp=None):
                         param_score_history[temp_key].append(score)
 
                     func_args = {k: v for k, v in func_args.items() if k not in keys_to_exclude}
-                    data_collector.summarize_results(saved_system_file, {data_key: func_args}, optimal_score)
+                    data_collector.summarize_results(saved_system_file, {data_key: func_args}, optimal_score, score)
 
                 score_history.append(np.mean(repetition_scores))
 

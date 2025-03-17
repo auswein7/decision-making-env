@@ -57,7 +57,7 @@ class DataCollector:
             DataCollector.export_to_json(sys_config_json, filename)
 
     # TODO:: push to a database, probably mongoDB
-    def summarize_results(self, save_file_per_trial, run_args, optimal_score):
+    def summarize_results(self, save_file_per_trial, run_args, optimal_score, avg_100_score):
         """
         Compile all stored data in self.results.
 
@@ -71,6 +71,7 @@ class DataCollector:
 
             agents = final_sys.agents
             sim_score = final_sys.score
+            avg_100_score = avg_100_score
             coverage_map = final_sys.resource_coverage
             resources = final_sys.resources
             max_cover = final_sys.M
@@ -96,8 +97,9 @@ class DataCollector:
                 "resource_coverage_percentage": resources_covered / len(resources),
                 "over_covered_resources": over_coverage_map,
                 "max_possible_score": optimal_score,
-                "simulation_score": sim_score,
-                "grade": str((sim_score / optimal_score) * 100) + "%",
+                "final_sys_score": sim_score,
+                "avg_100_score": avg_100_score,
+                "grade": str((avg_100_score / optimal_score) * 100) + "%",
                 "best_system_score": best_system.score,
                 "iteration_of_best_system": best_iteration,
                 "agent_total_actions": agent_action_count,
