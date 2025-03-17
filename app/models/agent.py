@@ -15,4 +15,4 @@ class Agent:
         self.utility_function = utility
 
     def evaluate_action(self, action, system, utility_function):
-            return utility_function(self, action, system.resource_coverage, system.M)
+        return utility_function(self, action, system.resource_coverage, system.M)

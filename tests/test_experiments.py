@@ -11,7 +11,7 @@ def test_generate_problem_instance():
 
 
 def test_generate_problem_instance_from_json():
-    system = load_scenario_from_json("../"+JSON_LOAD_PATH)
+    system = load_scenario_from_json("../" + JSON_LOAD_PATH)
     assert len(system.resources) == 10
     assert len(system.agents) == 5
     assert system.M == 3

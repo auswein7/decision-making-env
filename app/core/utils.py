@@ -3,9 +3,6 @@ from copy import deepcopy
 from app.utils.constants import DEFAULT_OPTIMISTIC_ALPHA
 
 
-# TODO:: WHAT IF THE COVERAGE MAP IS THE SAME AGENT WE ARE EVALUATING
-
-
 def marginal_contribution_utility(agent, new_action, coverage_map, M):
     previous_action = agent.current_action
     new_action_score = 0

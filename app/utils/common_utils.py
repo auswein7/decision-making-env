@@ -155,7 +155,6 @@ def generate_param_analysis_plot(x, y, var_name, sys_optimal):
     filename = os.path.join(JSON_SAVE_PATH, f"{var_name}_vs_sys_score.png")
     os.makedirs(JSON_SAVE_PATH, exist_ok=True)
 
-
     normalized_data = [np.array(score) / sys_optimal for score in y]
 
     plt.figure(figsize=(8, 5))
@@ -204,6 +203,7 @@ def generate_histogram_analysis_plot(data, var_name, bins, sys_optimal):
         filename = os.path.join(folder_path, f"{var_name}_{param}.png")
         plt.savefig(filename, dpi=300)
         plt.close()
+
 
 def format_agent_data(agents):
     """

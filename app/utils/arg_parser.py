@@ -206,7 +206,6 @@ def read_app_properties():
         help="Size of new generations in ga, percentage of original population size, 1 maintains original size"
     )
 
-
     parser.add_argument(
         "--k_crossover",
         type=int,
