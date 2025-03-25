@@ -6,6 +6,7 @@ class Agent:
         id: integer value representing the agent id.
         action_set: list of actions representing resources this agent can cover.
         current_action: current coverage of the agent
+        utility_function: list of utilities the agents use to evaluate actions
     """
 
     def __init__(self, agent_id, action_set, utility):

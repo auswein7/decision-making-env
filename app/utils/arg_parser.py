@@ -1,6 +1,7 @@
 import argparse
 import configparser
 
+# TODO:: REMOVE GENETIC PARAMS, REORDER TO REFLECT APP.PROPS ORDER
 
 def read_app_properties():
     """
@@ -143,10 +144,10 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--utility_function",
+        "--utility_functions",
         type=str,
-        default=str(config['DEFAULT'].get('utility_function', "")),
-        help="How will the agents weight the value of each resource relative to other agents presence"
+        default=str(config['DEFAULT'].get('utility_functions', "")),
+        help="How will the agents weight the value of each resource relative to other agents presence, comma separated"
     )
 
     parser.add_argument(
@@ -154,63 +155,6 @@ def read_app_properties():
         type=int,
         default=int(config['DEFAULT'].get('system_convergence_iter', "0")),
         help="The upper bound on how many resources can be covered in one subset of agent action"
-    )
-
-    parser.add_argument(
-        "--population_size",
-        type=int,
-        default=int(config['DEFAULT'].get('population_size', "0")),
-        help="Size of populations per generation of GA"
-    )
-
-    parser.add_argument(
-        "--generations",
-        type=int,
-        default=int(config['DEFAULT'].get('generations', "0")),
-        help="Generations (iterations) to use for GA"
-    )
-
-    parser.add_argument(
-        "--mutation_rate",
-        type=float,
-        default=float(config['DEFAULT'].get('mutation_rate', "0.0")),
-        help="Rate at which agent actions will by altered within a member of a population"
-    )
-
-    parser.add_argument(
-        "--tournament_k",
-        type=int,
-        default=int(config['DEFAULT'].get('tournament_k', "0")),
-        help="Percentage of individuals from population to compete in tournament selection"
-    )
-
-    parser.add_argument(
-        "--selection_pressure",
-        type=float,
-        default=float(config['DEFAULT'].get('selection_pressure', "0.0")),
-        help="Likelihood of individuals to be selected to compete in a tournament, 1 means consider "
-             "only the most fit individuals, 0 means select random individuals for tournament selection"
-    )
-
-    parser.add_argument(
-        "--num_parents",
-        type=int,
-        default=int(config['DEFAULT'].get('num_parents', "0")),
-        help="Number of parent individuals to use for crossover in ga"
-    )
-
-    parser.add_argument(
-        "--generational_size",
-        type=float,
-        default=float(config['DEFAULT'].get('generational_size', "0.9")),
-        help="Size of new generations in ga, percentage of original population size, 1 maintains original size"
-    )
-
-    parser.add_argument(
-        "--k_crossover",
-        type=int,
-        default=int(config['DEFAULT'].get('k_crossover', "0")),
-        help="Amount of partitions to make in parent agent actions when forming new generation of individuals"
     )
 
     parser.add_argument(

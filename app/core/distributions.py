@@ -2,6 +2,8 @@ import random
 
 import numpy as np
 
+from app.utils.constants import BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE
+
 
 class Distribution:
     """
@@ -15,22 +17,26 @@ class Distribution:
         self.temperature = temperature
 
     def get_distribution(self):
-        if self.distribution == "approximate_best_response":
+        if self.distribution == BEST_RESPONSE:
+            return self.best_response
+        if self.distribution == APPROX_BEST_RESPONSE:
             return self.approximate_best_response
-        if self.distribution == "logit_response":
+        if self.distribution == LOGIT_RESPONSE:
             return self.logit_response
+
+    # TODO:: implement
+    def best_response(self):
+        return 0
 
     def approximate_best_response(self, action_scores):
         max_score = max(action_scores.values())
         min_score = min(action_scores.values())
 
-        # Create dict of [action -> new scaled score] based on passed beta value
         scaled_scores = {
             action: self.beta * (score - min_score) + (1 - self.beta) * (max_score - min_score)
             for action, score in action_scores.items()
         }
 
-        # Select an action probabilistically based on scaled scores
         total_scaled_score = sum(scaled_scores.values())
         if total_scaled_score > 0:
             probabilities = {action: score / total_scaled_score for action, score in scaled_scores.items()}
@@ -41,8 +47,7 @@ class Distribution:
             )[0]
             return set(selected_action)
         else:
-            best_actions = [a for a in action_scores if action_scores[a] == max_score]
-            return random.choice(best_actions)
+            return random.choice([a for a in action_scores])
 
     def logit_response(self, action_scores):
         scores = np.array(list(action_scores.values()))

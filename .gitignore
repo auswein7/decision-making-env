@@ -1,6 +1,5 @@
 .idea/
-frames/
-run_data/global_vis_m_c/
+app/out/
 __pycache__/
 thoughts.txt
 .DS_Store

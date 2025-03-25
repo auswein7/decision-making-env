@@ -5,23 +5,36 @@ from itertools import product
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.core.distributions import Distribution
-from app.models.genetic_algorithm import GeneticAlgorithm
+from app.core.utils import marginal_contribution_utility, equal_share_utility, optimistic_utility
 from app.utils.common_utils import format_agent_data
 from app.utils.constants import *
 
+UTILITY_FUNCS = {
+    MC_UTILITY: marginal_contribution_utility,
+    ES_UTILITY: equal_share_utility,
+    OPTIMISTIC_UTILITY: optimistic_utility
+}
 
-def probability_response(system=None, distribution="", max_iterations=50, beta=0.5, temperature=1,
+
+def probability_response(system=None, distribution="", agent_util=None, max_iterations=50, beta=0.5, temperature=1,
                          data_collector=None, trial_num=0,
-                         conv_iter=float("inf")):
-    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {PROB_RESPONSE} algorithm.")
-
-    prob_dist = Distribution(distribution=distribution, beta=beta, temperature=temperature)
+                         conv_iter=float("inf"), data_key=""):
+    func_args = {k: v for k, v in locals().items() if k not in EXCLUDE_KEYS}
+    print(f"\nBeginning trial {trial_num} with {max_iterations} iterations using {PROB_RESPONSE} algorithm with params:\n"
+          f"beta: {beta}\n"
+          f"temperature: {temperature}\n"
+          f"distribution: {distribution}\n"
+          f"conv_iter: {conv_iter}.\n")
 
     iteration = 0
     # Log initial state
-    data_key = PROB_RESPONSE + ":" + distribution
     if data_collector is not None:
         data_collector.log(trial_num, iteration, deepcopy(system), data_key)
+
+    prob_dist = Distribution(distribution=distribution, beta=beta, temperature=temperature)
+    for agent in system.agents:
+        agent.utility_function = UTILITY_FUNCS[agent_util]
+        agent.current_action = set()
 
     # list for system convergence calculation
     system_scores = []
@@ -60,51 +73,7 @@ def probability_response(system=None, distribution="", max_iterations=50, beta=0
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.score}")
 
-    return sum(system_scores[-100:]) / min(100, len(system_scores))
-
-
-def genetic_response(system=None, max_iterations=10000, data_collector=None, trial_num=0,
-                     population_size=1000, mutation_rate=0.33, tournament_k=100, num_parents=2,
-                     generational_size=0.98, k_crossover=1):
-    print(
-        f"Creating population {trial_num} with {max_iterations} total generations using {GENETIC_RESPONSE}.\n"
-        f"population_size: {population_size}\nmutation_rate: {mutation_rate}\ntournament_k: {tournament_k}\nnum_parents: {num_parents}\n"
-        f"generational_size: {generational_size}\nk_crossover: {k_crossover}\n")
-
-    iteration = 0
-
-    # pass initial state
-    if data_collector is not None:
-        data_collector.log(trial_num, iteration, deepcopy(system), GENETIC_RESPONSE + ":")
-
-    ga = GeneticAlgorithm(population_size, mutation_rate, tournament_k,
-                          num_parents, generational_size, k_crossover)
-    ga.create_population(system)
-    most_fit_sys = None
-    while iteration < max_iterations:
-        iteration += 1
-
-        convergence = ga.breed_population()
-        ga.evaluate_fitness()
-
-        most_fit_sys = max(ga.population, key=lambda x: x[1])[0]
-
-        # compute score of best system
-        most_fit_sys.system_score()
-
-        if data_collector is not None:
-            data_collector.log(trial_num, iteration, deepcopy(most_fit_sys), GENETIC_RESPONSE + ":")
-
-        if convergence:
-            print(
-                f"\n{GENETIC_RESPONSE} system converged on iteration {iteration} with a final system score of {most_fit_sys.score}.\n")
-            return most_fit_sys.score
-
-        # Log progress every 1000 iterations
-        if iteration % 1000 == 0:
-            print(f"Iteration {iteration}: System Score = {most_fit_sys.score}")
-
-    return most_fit_sys.score
+    return sum(system_scores[-int(len(system_scores) * 0.2):]) / int(len(system_scores) * 0.2), func_args
 
 
 """ BELOW FUNCTIONS CONTAIN ALGORITHMS THAT WILL DETERMINISTICALLY COMPUTE THE MAXIMUM ATTAINABLE SYSTEM SCORE
@@ -259,7 +228,6 @@ def calculate_system_convergence(score_history, curr_sys):
 # function map indexed by passed algorithm in application.properties
 function_map = {
     "probability_response": probability_response,
-    "genetic_response": genetic_response,
     "ilp_response": ilp_response,
     "brute_force": brute_force
 }

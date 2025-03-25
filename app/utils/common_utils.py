@@ -9,7 +9,7 @@ import numpy as np
 from app.core.system import System
 from app.models.agent import Agent
 from app.models.resource import Resource
-from app.utils.constants import JSON_SAVE_PATH
+from app.utils.constants import *
 
 
 def load_scenario_from_json(file_path):
@@ -140,78 +140,49 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
     plt.savefig(file_name)
 
 
-def generate_param_analysis_plot(x, y, var_name, sys_optimal):
-    """
-    Generate plot given system score per trial, targeting a specific parameter.
+def generate_param_analysis_plot(data, sys_optimal):
+    for (utility, var_name), values in data.items():
+        folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
+        os.makedirs(folder_path, exist_ok=True)
 
+        normalized_scores = [np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores) for scores in
+                             values['scores']]
 
-
-    :param x: axis data, parameter value for trial
-    :param y: axis data, system score for trial
-    :param var_name: name of the target parameter
-    :param sys_optimal: optimal score for normalization
-    :return: None
-    """
-    filename = os.path.join(JSON_SAVE_PATH, f"{var_name}_vs_sys_score.png")
-    os.makedirs(JSON_SAVE_PATH, exist_ok=True)
-
-    normalized_data = [np.array(score) / sys_optimal for score in y]
-
-    plt.figure(figsize=(8, 5))
-    plt.plot(x, normalized_data, marker='o', linestyle='-', linewidth=2, markersize=6)
-    plt.xlabel(f"{var_name}", fontsize=12)
-    plt.ylabel("System Score per trial", fontsize=12)
-    plt.title(f"{var_name} vs System Score", fontsize=14, fontweight='bold')
-
-    plt.grid(True, linestyle='--', alpha=0.6)
-    plt.xticks(fontsize=10)
-    plt.yticks(fontsize=10)
-
-    plt.tight_layout()
-    plt.savefig(filename, dpi=300)
-    plt.close()
-
-
-def generate_histogram_analysis_plot(data, var_name, bins, sys_optimal):
-    """
-    Generate individual histograms for each param val and save separately to same dir.
-
-    :param sys_optimal: highest possible score given sys config. Used for norm [0, optimal]
-    :param bins: Histogram bin count
-    :param data: Dict of param val -> scores over trial_repetitions
-    :param var_name: Variable name used for file naming and titles
-    """
-    folder_path = os.path.join(JSON_SAVE_PATH, f"{var_name}_histograms")
-    os.makedirs(folder_path, exist_ok=True)
-
-    normalized_data = {
-        param: np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores)
-        for param, scores in data.items() if param[0] == var_name[0]
-    }
-
-    bins = np.linspace(0, 1, bins)
-
-    for (param, scores) in normalized_data.items():
         plt.figure(figsize=(8, 5))
-        plt.hist(scores, bins=bins, alpha=0.7, color="blue", edgecolor='black')
+        plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
+        plt.xticks(ticks=range(1, len(values['x']) + 1), labels=values['x'])
 
-        plt.xlabel('Normalized System Score', fontsize=10)
-        plt.ylabel('Occurrences', fontsize=10)
-        plt.title(f'Histogram for {var_name} {param}', fontsize=12)
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.xlabel(f"{var_name}", fontsize=8)
+        plt.ylabel("Normalized Score", fontsize=8)
+        plt.title(f"{var_name} vs System Score ({utility})", fontsize=10)
+        plt.grid(alpha=0.5)
 
-        filename = os.path.join(folder_path, f"{var_name}_{param}.png")
+        filename = os.path.join(folder_path, f"{var_name}_{utility}.png")
         plt.savefig(filename, dpi=300)
         plt.close()
 
 
-def format_agent_data(agents):
-    """
-    Extract nested set data to export agent data to json files.
+def generate_zoomed_analysis_plot(data, sys_optimal):
+    for (utility, var_name), values in data.items():
+        folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-zoom")
+        os.makedirs(folder_path, exist_ok=True)
 
-    :param agents: list of agents
-    :return: formatted dictionary of agents -> resources
-    """
+        for param_value, scores in zip(values['x'], values['scores']):
+            normalized_scores = np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores)
+
+            plt.figure(figsize=(8, 5))
+            plt.plot(range(len(normalized_scores)), normalized_scores, marker='o', color="blue")
+            plt.xlabel('Repetition', fontsize=8)
+            plt.ylabel('Norm Score', fontsize=8)
+            plt.title(f'{var_name}:{param_value} with {utility}', fontsize=10)
+            plt.grid(alpha=0.5)
+
+            filename = os.path.join(folder_path, f"{var_name}_{utility}_{param_value}.png")
+            plt.savefig(filename, dpi=300)
+            plt.close()
+
+
+def format_agent_data(agents):
     out = {agent.id: [] for agent in agents}
     for agent in agents:
         for subset in agent.action_set:

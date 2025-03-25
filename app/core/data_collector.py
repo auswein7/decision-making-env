@@ -13,23 +13,26 @@ class DataCollector:
         results: data aggregated through scenario execution.
     """
 
-    def __init__(self, algorithms, uuid_file_map):
-        self.results = {algo_name: [] for algo_name in algorithms}
+    def __init__(self, data_key, uuid_file_map):
+        self.results = {}
         self.uuid_file_map = uuid_file_map
-        self.algorithms = algorithms
+        self.data_key = data_key
         self.logged_sys = False
 
-    def log(self, trial, iteration, system, algorithm):
+    def log(self, trial, iteration, system, data_key):
         """
-        Log the current state during every iteration. Called trial * iteration times throughout a run.
+        Log initial system state.
 
         Attributes:
             trial: trial number for this simulation.
             iteration: iteration number for this trial.
             system: configuration at trial/iteration
-            algorithm: algorithm used for index into results dict
+            data_key: data_key used for index into results dict
         """
-        self.results[algorithm].append({
+        if data_key not in self.results:
+            self.results[data_key] = []
+
+        self.results[data_key].append({
             "trial": trial,
             "iteration": iteration,
             "system": system
@@ -51,27 +54,29 @@ class DataCollector:
                 "resource_values": formatted_resources
             })}
 
-            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algorithm,
-                                    f"{self.uuid_file_map[algorithm]}.json")
+            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", data_key,
+                                    f"{self.uuid_file_map[data_key]}.json")
 
             DataCollector.export_to_json(sys_config_json, filename)
 
-    # TODO:: push to a database, probably mongoDB
-    def summarize_results(self, save_file_per_trial, run_args, optimal_score, avg_100_score):
+    # TODO:: push to a database
+    def summarize_results(self, save_file_per_trial, run_args, optimal_score, avg_score):
         """
         Compile all stored data in self.results.
 
         Attributes:
             save_file_per_trial: trial num -> system json uuid saved for this trial
+            run_args: run args for this trial
+            optimal_score: optimal score for this trial
+            avg_score: average 0.2*trials score for this trial
         """
-        for algo in self.results.keys():
-            trial_num = self.results[algo][0]['trial']
+        for data_key in self.results.keys():
+            trial_num = self.results[data_key][0]['trial']
             sim_summary = {trial_num: {}}
-            final_sys = self.results[algo][-1]["system"]
+            final_sys = self.results[data_key][-1]["system"]
 
             agents = final_sys.agents
             sim_score = final_sys.score
-            avg_100_score = avg_100_score
             coverage_map = final_sys.resource_coverage
             resources = final_sys.resources
             max_cover = final_sys.M
@@ -88,9 +93,9 @@ class DataCollector:
             over_coverage_map = {resource.id: coverage_map[resource.id] for resource in resources if
                                  coverage_map[resource.id] > max_cover}
 
-            overhead_actions, net_contributions, agent_action_count = DataCollector.calculate_overhead_net_contribution_actions(data=self.results[algo])
-            best_system, best_iteration = DataCollector.get_best_system_iter(data=self.results[algo])
-
+            overhead_actions, net_contributions, agent_action_count = DataCollector.calculate_overhead_net_contribution_actions(data=self.results[data_key])
+            best_system, best_iteration = DataCollector.get_best_system_iter(data=self.results[data_key])
+            # TODO:: add coverable resources to the system config output
             sim_summary[trial_num] = ({
                 "agent_allocations": agent_actions,
                 "resource_coverage": coverage_map,
@@ -98,29 +103,29 @@ class DataCollector:
                 "over_covered_resources": over_coverage_map,
                 "max_possible_score": optimal_score,
                 "final_sys_score": sim_score,
-                "avg_100_score": avg_100_score,
-                "grade": str((avg_100_score / optimal_score) * 100) + "%",
+                "avg_score": avg_score,
+                "grade": str((avg_score / optimal_score) * 100) + "%",
                 "best_system_score": best_system.score,
                 "iteration_of_best_system": best_iteration,
                 "agent_total_actions": agent_action_count,
-                "resource_popularity": DataCollector.calculate_resource_popularity(data=self.results[algo]),
+                "resource_popularity": DataCollector.calculate_resource_popularity(data=self.results[data_key]),
                 "agent_contributions": DataCollector.calculate_agent_contribution(agents=agents,
                                                                                   coverage=coverage_map,
                                                                                   M=max_cover),
                 "agent_overhead_actions": overhead_actions,
                 "agent_net_contribution": net_contributions,
-                "sys_convergence_iteration": self.results[algo][-1]["iteration"]+1,
+                "sys_convergence_iteration": self.results[data_key][-1]["iteration"]+1,
                 "output_file_UUID": save_file_per_trial[trial_num],
-                "run_args": run_args[algo],
+                "run_args": run_args[data_key],
             })
 
-            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", algo,
-                                    f"{self.uuid_file_map[algo]}.json")
+            filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", data_key,
+                                    f"{self.uuid_file_map[data_key]}.json")
 
             DataCollector.export_to_json(sim_summary, filename)
 
         # clear results to save memory
-        self.results = {algo_name: [] for algo_name in self.algorithms}
+        self.results = {}
 
     @staticmethod
     def get_best_system_iter(data):

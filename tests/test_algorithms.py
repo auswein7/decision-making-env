@@ -1,6 +1,6 @@
 import numpy as np
 
-from app.core.algorithms import probability_response, genetic_response, \
+from app.core.algorithms import probability_response, \
     ilp_response, brute_force, calculate_system_convergence
 from app.experiments.experiments import generate_problem_instance
 from app.utils.constants import *
@@ -13,12 +13,6 @@ def test_probability_response():
     system.score = 0
     probability_response(system, max_iterations=100, distribution=LOGIT_RESPONSE)
     assert system.score > 0
-
-
-def test_genetic_response():
-    system = generate_problem_instance(10, 3, (1, 3), (2, 2), 1, (1, 10), 1)[0]
-    score = genetic_response(system, population_size=100)
-    assert score > 0
 
 
 # TODO:: fix this test
