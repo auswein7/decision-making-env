@@ -1,4 +1,3 @@
-import inspect
 import random
 import time
 import uuid
@@ -16,7 +15,7 @@ from app.utils.constants import *
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
-                              action_subset_size_range, m, resource_val_range, num_trials):
+                              action_subset_size_range, m, resource_val_range):
     """
     Create the System.
 
@@ -26,25 +25,20 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     :param action_subset_size_range: range for size of each subset of resources
     :param m: maximum cover
     :param resource_val_range: range for resource value
-    :param num_trials: number of trials, need to create a system object per trial
-    :return: system_dict: dictionary of utility_function -> system object
+    :return: system: single instance of a system
     """
-    system_dict = {}
+    resources = [Resource(i, random.randint(*resource_val_range)) for i in range(num_resources)]
+    agents = []
+    for i in range(num_agents):
+        action_set = set()
+        while len(action_set) < random.randint(*action_size_range):
+            action = set(random.sample(resources, random.randint(*action_subset_size_range)))
+            action_set.add(frozenset(action))
 
-    for trial in range(num_trials):
-        resources = [Resource(i, random.randint(*resource_val_range)) for i in range(num_resources)]
-        agents = []
-        for i in range(num_agents):
-            action_set = set()
-            while len(action_set) < random.randint(*action_size_range):
-                action = set(random.sample(resources, random.randint(*action_subset_size_range)))
-                action_set.add(frozenset(action))
+        # Utility function set by called algorithm
+        agents.append(Agent(i, action_set, None))
 
-            # Utility function set by called algorithm
-            agents.append(Agent(i, action_set, None))
-
-        system_dict[trial] = System(resources, agents, m)
-    return system_dict
+    return System(resources, agents, m)
 
 
 # TODO:: implement
@@ -99,8 +93,7 @@ def conduct_parameter_analysis(args, b=None, temp=None):
     system = generate_problem_instance(
         args.num_resources, args.num_agents, (args.agent_action_len_lb, args.agent_action_len_ub),
         (args.agent_subset_len_lb, args.agent_subset_len_ub), args.max_cover,
-        (args.resource_val_lb, args.resource_val_ub), 1
-    )[0]
+        (args.resource_val_lb, args.resource_val_ub))
 
     save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
     print("Calculating system optimal score")
