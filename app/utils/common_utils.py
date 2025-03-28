@@ -45,7 +45,7 @@ def load_scenario_from_json(file_path):
 
 def export_scenario_to_json(system=None, file_path="app/out"):
     """
-    Export a given random system to json file to be reloaded in future experiments.
+    Export a given random system to json file to be reloaded in future runner.
 
     :param system: experiment system configuration
     :param file_path: path to scenario json file
@@ -192,3 +192,27 @@ def format_agent_data(agents):
                 sub_list.append(output_tuple)
             out[agent.id].append(sub_list)
     return out
+
+def jaccard_index(set1, set2):
+    intersection = set1 & set2
+    union = set1 | set2
+    return len(intersection) / len(union) if union else 0
+
+def compute_system_difficulties(systems):
+    system_difficulties = []
+
+    for system in systems:
+        total_similarity = 0
+        comparisons = 0
+        for i, agent in enumerate(system.agents):
+            for j, other_agent in enumerate(system.agents):
+                if i < j:
+                    sim = jaccard_index(agent.action_set, other_agent.action_set)
+                    total_similarity += sim
+                    comparisons += 1
+        avg_similarity = total_similarity / comparisons if comparisons else 0
+        system_difficulties.append((system, avg_similarity))
+
+    # Sort by average similarity (ascending)
+    system_difficulties.sort(key=lambda x: x[1])
+    return [system for system, _ in system_difficulties]

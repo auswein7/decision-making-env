@@ -2,7 +2,7 @@ import numpy as np
 
 from app.core.algorithms import probability_response, \
     ilp_response, brute_force, calculate_system_convergence
-from app.experiments.experiments import generate_problem_instance
+from app.runner.experiments import generate_problem_instance
 from app.utils.constants import *
 
 

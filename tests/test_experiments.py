@@ -1,4 +1,4 @@
-from app.experiments.experiments import generate_problem_instance
+from app.runner.experiments import generate_problem_instance
 from app.utils.common_utils import load_scenario_from_json
 from app.utils.constants import JSON_LOAD_PATH
 

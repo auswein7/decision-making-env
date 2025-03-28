@@ -119,15 +119,29 @@ def read_app_properties():
         "--analyze_beta",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('analyze_beta', "False").lower() in ['true', '1', 'yes'],
-        help="Boolean to generate simulation graphics after each trial"
+        help=""
     )
 
     parser.add_argument(
         "--analyze_temperature",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('analyze_temperature', "False").lower() in ['true', '1', 'yes'],
-        help="Boolean to generate simulation graphics after each trial"
+        help=""
     )
+
+    parser.add_argument(
+        "--analyze_system",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_system', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--best_response_gt",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('best_response_gt', "False").lower() in ['true', '1', 'yes'],
+        help="Plot best response output on graphs in parameter analysis"
+     )
 
     parser.add_argument(
         "--algorithm",
@@ -144,9 +158,9 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--utility_functions",
+        "--utility",
         type=str,
-        default=str(config['DEFAULT'].get('utility_functions', "")),
+        default=str(config['DEFAULT'].get('utility', "")),
         help="How will the agents weight the value of each resource relative to other agents presence, comma separated"
     )
 
@@ -164,6 +178,8 @@ def read_app_properties():
         help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
              "averages."
     )
+
+
 
     args = parser.parse_args()
     return args

@@ -8,9 +8,11 @@ from app.core.algorithms import function_map
 from app.core.data_collector import DataCollector
 from app.core.system import System
 from app.models.agent import Agent
+from app.runner.trial_runner import run_trial
 from app.models.resource import Resource
 from app.utils.common_utils import export_scenario_to_json
-from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot
+from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot, \
+    compute_system_difficulties
 from app.utils.constants import *
 
 
@@ -41,25 +43,67 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     return System(resources, agents, m)
 
 
-# TODO:: implement
 def run_from_json(args):
     return 0
 
 
-# TODO:: refactor to run over utility funcs
 def run_experiments(args):
     """
-    Parse arguments from CMD or app.props, create a system, run the experiments.
+    Parse arguments from CMD or app.props, create a system, run the runner.
 
     :param args: command line arguments, or default values from application.properties
     :return: none
     """
+    if args.analyze_system:
+        system_analysis_runner(args)
     if args.analyze_beta or args.analyze_temperature:
-        conduct_parameter_analysis(args, b=args.analyze_beta, temp=args.analyze_temperature)
+        parameter_analysis_runner(args, b=args.analyze_beta, temp=args.analyze_temperature)
         return
 
 
-def conduct_parameter_analysis(args, b=None, temp=None):
+def system_analysis_runner(args):
+    # Create a system per trial
+    # Compute the similarity score for all the systems
+    # Sort the systems by similarity score
+    # run same algorithms/distribution/etc for all systems
+    # save same data key when interfacing with datacollector for output
+
+    systems = []
+    for _ in range(args.num_trials):
+        systems.append(generate_problem_instance(num_resources=args.num_resources, num_agents=args.num_agents,
+                                                 action_size_range=(args.agent_action_len_lb, args.agent_action_len_ub),
+                                                 action_subset_size_range=(
+                                                     args.agent_subset_len_lb, args.agent_subset_len_ub),
+                                                 m=args.max_cover,
+                                                 resource_val_range=(args.resource_val_lb, args.resource_val_ub)))
+
+    ordered_systems = compute_system_difficulties(systems=systems)
+
+    for trial in range(args.num_trials):
+        save_file = export_scenario_to_json(ordered_systems[trial], JSON_SAVE_PATH)
+        key = f"{args.distribution}-{args.utility}"
+        data_collector = DataCollector(data_key=[key], uuid_file_map={key: str(uuid.uuid4())})
+        print("Calculating system optimal score")
+        start_t = time.time()
+        optimal_score = function_map.get(BRUTE_FORCE)(ordered_systems[trial])
+        end_t = time.time()
+        print(
+            f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
+        for repetition in range(args.repetitions):
+            score, func_args = run_trial(system=ordered_systems[trial],
+                                         max_iterations=args.iterations_per_trial,
+                                         beta=args.beta,
+                                         temperature=args.temperature,
+                                         data_collector=data_collector, trial_num=trial,
+                                         conv_iter=args.system_convergence_iter,
+                                         agent_util=args.utility, data_key=key,
+                                         distribution=args.distribution)
+
+            data_collector.summarize_results(save_file, func_args, avg_score=score, optimal_score=optimal_score)
+    return
+
+
+def parameter_analysis_runner(args, b=None, temp=None):
     """
     Parse arguments from CMD or app.props, create a system, run targeted parameter analysis.
 
@@ -76,12 +120,12 @@ def conduct_parameter_analysis(args, b=None, temp=None):
 
     param_score_history = {
         f"{utility},{BETA},{beta:.3f}": []
-        for utility in args.utility_functions.split(",")
+        for utility in args.utility.split(",")
         for beta in beta_vals
     }
     param_score_history.update({
         f"{utility},{TEMP},{t:.3f}": []
-        for utility in args.utility_functions.split(",")
+        for utility in args.utility.split(",")
         for t in temperature_vals
     })
 
@@ -102,7 +146,7 @@ def conduct_parameter_analysis(args, b=None, temp=None):
     end_t = time.time()
     print(
         f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
-    for utility in args.utility_functions.split(","):
+    for utility in args.utility.split(","):
         print(f"STARTING RUNS FOR {utility}")
         for param_vals, param_label, distribution in [(beta_vals, BETA, APPROX_BEST_RESPONSE),
                                                       (temperature_vals, TEMP, LOGIT_RESPONSE)]:
@@ -113,18 +157,19 @@ def conduct_parameter_analysis(args, b=None, temp=None):
 
             for trial, param in enumerate(param_vals):
                 for repetition in range(args.trial_repetitions):
-                    score, func_args = function_map.get(PROB_RESPONSE)(system=system,
-                                                                       max_iterations=args.iterations_per_trial,
-                                                                       beta=param if param_label == BETA else None,
-                                                                       temperature=param if param_label == TEMP else None,
-                                                                       data_collector=data_collector, trial_num=trial,
-                                                                       conv_iter=args.system_convergence_iter,
-                                                                       agent_util=utility, data_key=key,
-                                                                       distribution=distribution)
+                    score, func_args = run_trial(system=system,
+                                                 max_iterations=args.iterations_per_trial,
+                                                 beta=param if param_label == BETA else None,
+                                                 temperature=param if param_label == TEMP else None,
+                                                 data_collector=data_collector, trial_num=trial,
+                                                 conv_iter=args.system_convergence_iter,
+                                                 agent_util=utility, data_key=key,
+                                                 distribution=distribution)
 
                     param_score_history[f"{utility},{param_label},{param:.3f}"].append(score)
                     data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
 
+    # TODO:: FILES OVERWRITTEN BETWEEN RUNS, ADD DATE/TIME TO THE END OF THE FILE
     run_data = parse_score_history(param_score_history)
     generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score)
     generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score)
