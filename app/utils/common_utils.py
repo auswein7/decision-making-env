@@ -1,17 +1,24 @@
 import json
+import math
 import os
+import time
 import uuid
+from datetime import datetime
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
-from app.core.system import System
 from app.models.agent import Agent
 from app.models.resource import Resource
+from app.core.algorithms import function_map
+from app.models.system import System
 from app.utils.constants import *
 
+# TODO:: COMMENT FUNCS IN THIS FILE
 
+# TODO:: REFACTOR TO COMPLY WITH NEW CHANGES TO CLASSES
 def load_scenario_from_json(file_path):
     """
     Load scenario data from the scenarios directory
@@ -88,6 +95,7 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     return file_name
 
 
+# TODO:: REFACTOR, FAR TOO BUSY WITH MANY RESOURCES AND MANY AGENTS
 def visualize_system_configuration(system=None, uuid_str=None, file_path="app/out"):
     """
     Given a system configuration, render a graph representing the coverage of all agents in
@@ -141,12 +149,12 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
 
 
 def generate_param_analysis_plot(data, sys_optimal):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
         os.makedirs(folder_path, exist_ok=True)
 
-        normalized_scores = [np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores) for scores in
-                             values['scores']]
+        normalized_scores = [np.array(scores) / sys_optimal for scores in values['scores']]
 
         plt.figure(figsize=(8, 5))
         plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
@@ -157,18 +165,56 @@ def generate_param_analysis_plot(data, sys_optimal):
         plt.title(f"{var_name} vs System Score ({utility})", fontsize=10)
         plt.grid(alpha=0.5)
 
-        filename = os.path.join(folder_path, f"{var_name}_{utility}.png")
+        filename = os.path.join(folder_path, f"{var_name}_{utility}_{timestamp}.png")
         plt.savefig(filename, dpi=300)
         plt.close()
 
 
+def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System Scores', sys_opts=None):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    folder_path = os.path.join(JSON_SAVE_PATH, f"{title.replace(' ', '_')}")
+    os.makedirs(folder_path, exist_ok=True)
+
+    sorted_items = sorted(data.items(), key=lambda x: x[1][0])
+
+    x_labels = []
+    box_data = []
+
+    for system_id, values in sorted_items:
+        rank = values[0]
+        scores = values[1:]
+
+        opt = sys_opts[system_id]
+        if opt != 0:
+            scores = [s / opt for s in scores]
+        else:
+            scores = [0 for _ in scores]
+
+        short_id = system_id[:5]
+        x_labels.append(f"{rank:.3f}\n{short_id}")
+        box_data.append(scores)
+
+    plt.figure(figsize=(12, 6))
+    plt.boxplot(box_data, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
+    plt.xticks(ticks=range(1, len(x_labels) + 1), labels=x_labels, rotation=0)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.grid(alpha=0.5)
+    plt.tight_layout()
+
+    filename = os.path.join(folder_path, f"{title.replace(' ', '_')}_{x_label.replace(' ', '_')}_{timestamp}.png")
+    plt.savefig(filename, dpi=300)
+    plt.close()
+
 def generate_zoomed_analysis_plot(data, sys_optimal):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-zoom")
         os.makedirs(folder_path, exist_ok=True)
 
         for param_value, scores in zip(values['x'], values['scores']):
-            normalized_scores = np.array(scores) / sys_optimal if sys_optimal != 0 else np.zeros_like(scores)
+            normalized_scores = np.array(scores) / sys_optimal
 
             plt.figure(figsize=(8, 5))
             plt.plot(range(len(normalized_scores)), normalized_scores, marker='o', color="blue")
@@ -177,10 +223,36 @@ def generate_zoomed_analysis_plot(data, sys_optimal):
             plt.title(f'{var_name}:{param_value} with {utility}', fontsize=10)
             plt.grid(alpha=0.5)
 
-            filename = os.path.join(folder_path, f"{var_name}_{utility}_{param_value}.png")
+            filename = os.path.join(folder_path, f"{var_name}_{utility}_{param_value}_{timestamp}.png")
             plt.savefig(filename, dpi=300)
             plt.close()
 
+def plot_optimal_iterations(data, sys_optimal):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    title = "Normalized Scores vs Iterations"
+    folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_"))
+    os.makedirs(folder_path, exist_ok=True)
+
+    sorted_items = sorted(data.items())
+    x_labels = [str(k) for k, _ in sorted_items]
+
+    box_data = []
+    for _, scores in sorted_items:
+        norm_scores = [s / sys_optimal for s in scores]
+        box_data.append(norm_scores)
+
+    plt.figure(figsize=(12, 6))
+    plt.boxplot(box_data, vert=True, patch_artist=True, boxprops=dict(facecolor="lightcoral"))
+    plt.xticks(ticks=range(1, len(x_labels) + 1), labels=x_labels)
+    plt.title(title)
+    plt.xlabel("Iterations")
+    plt.ylabel("Normalized Score")
+    plt.grid(alpha=0.5)
+    plt.tight_layout()
+
+    filename = os.path.join(folder_path, f"{title.replace(' ', '_')}_{timestamp}.png")
+    plt.savefig(filename, dpi=300)
+    plt.close()
 
 def format_agent_data(agents):
     out = {agent.id: [] for agent in agents}
@@ -188,31 +260,128 @@ def format_agent_data(agents):
         for subset in agent.action_set:
             sub_list = []
             for resource in subset:
-                output_tuple = (resource.id, resource.value)
-                sub_list.append(output_tuple)
+                sub_list.append((resource.id, resource.value))
             out[agent.id].append(sub_list)
     return out
 
-def jaccard_index(set1, set2):
-    intersection = set1 & set2
-    union = set1 | set2
-    return len(intersection) / len(union) if union else 0
+
+def compute_overlap_density(agents, resources):
+    reach_sets = []
+    for agent in agents:
+        covered = set()
+        for action in agent.action_set:
+            covered |= action
+        reach_sets.append(covered)
+
+    total_overlap = 0
+    count = 0
+
+    for i, j in combinations(range(len(agents)), 2):
+        overlap = len(reach_sets[i] & reach_sets[j])
+        total_overlap += overlap / len(resources)
+        count += 1
+
+    return total_overlap / count
+
+
+def compute_agent_resource_entropy(agents, resources):
+    resource_counts = {r: 0 for r in resources}
+    total_hits = 0
+
+    for agent in agents:
+        for action in agent.action_set:
+            for r in action:
+                resource_counts[r] += 1
+                total_hits += 1
+
+    probs = [count / total_hits for count in resource_counts.values() if count > 0]
+    entropy = -sum(p * math.log(p) for p in probs)
+    return entropy
+
+
+def compute_feasibility_margin(agents, resources, M):
+    resource_to_agents = {r: set() for r in resources}
+
+    for agent in agents:
+        for action in agent.action_set:
+            for r in action:
+                resource_to_agents[r].add(agent.id)
+
+    total_margin = 0
+    for r in resources:
+        agent_count = len(resource_to_agents[r])
+        margin = (agent_count - M) / M
+        total_margin += margin
+
+    return total_margin / len(resources)
+
 
 def compute_system_difficulties(systems):
-    system_difficulties = []
+    system_difficulties_fm = {}
+    system_difficulties_re = {}
+    system_difficulties_od = {}
 
     for system in systems:
-        total_similarity = 0
-        comparisons = 0
-        for i, agent in enumerate(system.agents):
-            for j, other_agent in enumerate(system.agents):
-                if i < j:
-                    sim = jaccard_index(agent.action_set, other_agent.action_set)
-                    total_similarity += sim
-                    comparisons += 1
-        avg_similarity = total_similarity / comparisons if comparisons else 0
-        system_difficulties.append((system, avg_similarity))
+        system_difficulties_fm[system.id] = [compute_feasibility_margin(system.agents, system.resources, system.M)]
+        system_difficulties_re[system.id] = [compute_agent_resource_entropy(system.agents, system.resources)]
+        system_difficulties_od[system.id] = [compute_overlap_density(system.agents, system.resources)]
 
-    # Sort by average similarity (ascending)
-    system_difficulties.sort(key=lambda x: x[1])
-    return [system for system, _ in system_difficulties]
+    system_difficulties_fm = dict(sorted(system_difficulties_fm.items(), key=lambda x: x[1], reverse=True))
+    system_difficulties_re = dict(sorted(system_difficulties_re.items(), key=lambda x: x[1], reverse=True))
+    system_difficulties_od = dict(sorted(system_difficulties_od.items(), key=lambda x: x[1]))
+
+    return system_difficulties_fm, system_difficulties_re, system_difficulties_od
+
+def get_iteration_range(initial_iters, relative_step):
+    step = initial_iters * relative_step
+    left = [int(initial_iters - step * i) for i in reversed(range(5))]  # center and 4 left
+    right = [int(initial_iters + step * i) for i in range(1, 6)]        # 5 right
+    return left + right
+
+def parse_score_history(score_history):
+    parsed_data = {}
+
+    for data_key, scores in score_history.items():
+        for param_type in [BETA, TEMP]:
+            if param_type in data_key:
+                utility = data_key.split(param_type)[0][:-1]
+                param_value = float(data_key.replace(utility, '').replace(param_type, '').replace(',', ''))
+
+                if (utility, param_type) not in parsed_data:
+                    parsed_data[(utility, param_type)] = {'x': [], 'y': [], 'scores': []}
+
+                parsed_data[(utility, param_type)]['x'].append(param_value)
+                parsed_data[(utility, param_type)]['y'].append(np.mean(scores))
+                parsed_data[(utility, param_type)]['scores'].append(scores)
+
+    return parsed_data
+
+
+def calc_and_time_optimal(system):
+    print("Calculating system optimal score")
+    start_t = time.time()
+    optimal_score = function_map.get(BRUTE_FORCE)(system)
+    end_t = time.time()
+    print(
+        f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
+    return optimal_score
+
+def calculate_system_convergence(score_history, curr_sys):
+    """
+    Compute system convergence based on stability of system score.
+
+    :param score_history: Conv_iter previous system scores
+    :param curr_sys: current system at this iteration
+    :return: true if system has converged, false otherwise.
+    """
+    score_sim_count = 0
+    score = curr_sys.score
+    for idx, prev_score in enumerate(reversed(score_history)):
+        if prev_score < score:
+            return False
+        else:
+            score_sim_count += 1
+        score = prev_score
+    if score_sim_count >= len(score_history):
+        return True
+    return False

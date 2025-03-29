@@ -4,18 +4,9 @@ from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
 from app.utils.common_utils import format_agent_data
 
-""" BELOW FUNCTIONS CONTAIN ALGORITHMS THAT WILL DETERMINISTICALLY COMPUTE THE MAXIMUM ATTAINABLE SYSTEM SCORE
-GIVE AGENT ACTION SET COVERAGE AND RESOURCE VALUES"""
-
 
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
-    """
-    Compute optimal system score using LP model.
-
-    :param system: object containing all experiment data
-    :return: optimal system score
-    """
     print(f"Calculating maximum attainable system score using ilp_response algorithm.")
 
     agents = system.agents
@@ -101,7 +92,6 @@ def brute_force(system=None):
 
     :param system: object containing all experiment data
     :return: system score after brute force calculation
-             coverage that attained the greatest system score
     """
     agents = system.agents
 
@@ -129,7 +119,6 @@ def brute_force(system=None):
     return best_score
 
 
-# function map indexed by passed algorithm in application.properties
 function_map = {
     "ilp_response": ilp_response,
     "brute_force": brute_force

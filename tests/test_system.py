@@ -1,7 +1,6 @@
-from app.core.system import System
 from app.models.agent import Agent
 from app.models.resource import Resource
-
+from app.models.system import System
 from app.utils.constants import MC_UTILITY
 
 

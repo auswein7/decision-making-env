@@ -1,18 +1,17 @@
 import random
-import time
 import uuid
 
 import numpy as np
 
-from app.core.algorithms import function_map
 from app.core.data_collector import DataCollector
-from app.core.system import System
 from app.models.agent import Agent
-from app.runner.trial_runner import run_trial
 from app.models.resource import Resource
+from app.models.system import System
+from app.runner.trial_runner import run_trial
 from app.utils.common_utils import export_scenario_to_json
 from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot, \
-    compute_system_difficulties
+    compute_system_difficulties, plot_scores_by_rank, get_iteration_range, plot_optimal_iterations, parse_score_history, \
+    calc_and_time_optimal
 from app.utils.constants import *
 
 
@@ -26,50 +25,95 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     :param action_size_range: range for size of each action set
     :param action_subset_size_range: range for size of each subset of resources
     :param m: maximum cover
-    :param resource_val_range: range for resource value
+    :param resource_val_range: range for resource values
     :return: system: single instance of a system
     """
     resources = [Resource(i, random.randint(*resource_val_range)) for i in range(num_resources)]
     agents = []
     for i in range(num_agents):
-        action_set = set()
+        action_set = []
         while len(action_set) < random.randint(*action_size_range):
             action = set(random.sample(resources, random.randint(*action_subset_size_range)))
-            action_set.add(frozenset(action))
+            if action not in action_set:
+                action_set.append(action)
 
-        # Utility function set by called algorithm
         agents.append(Agent(i, action_set, None))
 
     return System(resources, agents, m)
 
 
-def run_from_json(args):
-    return 0
-
-
-def run_experiments(args):
+def filter_run(args):
     """
     Parse arguments from CMD or app.props, create a system, run the runner.
 
-    :param args: command line arguments, or default values from application.properties
+    :param args: cmd args, or defaults from application.properties
     :return: none
     """
     if args.analyze_system:
         system_analysis_runner(args)
+        return
+    if args.find_optimal_iterations:
+        optimal_iteration_runner(args)
+        return
     if args.analyze_beta or args.analyze_temperature:
         parameter_analysis_runner(args, b=args.analyze_beta, temp=args.analyze_temperature)
         return
 
 
-def system_analysis_runner(args):
-    # Create a system per trial
-    # Compute the similarity score for all the systems
-    # Sort the systems by similarity score
-    # run same algorithms/distribution/etc for all systems
-    # save same data key when interfacing with datacollector for output
+# TODO:: implement
+def run_from_json(args):
+    return 0
 
+
+def optimal_iteration_runner(args):
+    """
+    Run trials to test different iteration counts for a set system, distribution, and utility function.
+
+    Plots:
+        X: the iteration count used for the trial
+        Y: the box plot of trial_repetitions scores per trial
+    """
+    iteration_range = get_iteration_range(args.iterations_per_trial, OPT_ITER_STEP_SIZE)
+    iter_data = {}
+    system = generate_problem_instance(
+        args.num_resources, args.num_agents, (args.agent_action_len_lb, args.agent_action_len_ub),
+        (args.agent_subset_len_lb, args.agent_subset_len_ub), args.max_cover,
+        (args.resource_val_lb, args.resource_val_ub))
+
+    save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
+    optimal_score = calc_and_time_optimal(system=system)
+    key = f"{args.distribution}-{args.utility}"
+    data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
+    for trial, iter_range in enumerate(iteration_range):
+        for repetition in range(args.trial_repetitions):
+            score, func_args = run_trial(system=system,
+                                         max_iterations=iter_range,
+                                         beta=args.beta,
+                                         temperature=args.temperature,
+                                         data_collector=data_collector, trial_num=iter_range,
+                                         conv_iter=args.system_convergence_iter,
+                                         agent_util=args.utility, data_key=key,
+                                         distribution=args.distribution)
+
+            data_collector.summarize_results(save_file, {key: func_args}, avg_score=score, optimal_score=optimal_score)
+            if iter_range in iter_data:
+                iter_data[iter_range].append(score)
+            else:
+                iter_data[iter_range] = [score]
+
+    plot_optimal_iterations(data=iter_data, sys_optimal=optimal_score)
+
+
+def system_analysis_runner(args):
+    """
+    Run trials to test different system configurations for a set distribution, and utility function.
+
+    Plots (3):
+        X: the rank of the system, labeled by first 6 chars of sys.id and rank value
+        Y: the box plot of trial_repetitions scores per trial
+    """
     systems = []
-    for _ in range(args.num_trials):
+    for _ in range(args.num_systems):
         systems.append(generate_problem_instance(num_resources=args.num_resources, num_agents=args.num_agents,
                                                  action_size_range=(args.agent_action_len_lb, args.agent_action_len_ub),
                                                  action_subset_size_range=(
@@ -77,20 +121,17 @@ def system_analysis_runner(args):
                                                  m=args.max_cover,
                                                  resource_val_range=(args.resource_val_lb, args.resource_val_ub)))
 
-    ordered_systems = compute_system_difficulties(systems=systems)
+    # sorted easy -> hard
+    fm_rank, re_rank, od_rank = compute_system_difficulties(systems=systems)
 
-    for trial in range(args.num_trials):
-        save_file = export_scenario_to_json(ordered_systems[trial], JSON_SAVE_PATH)
-        key = f"{args.distribution}-{args.utility}"
-        data_collector = DataCollector(data_key=[key], uuid_file_map={key: str(uuid.uuid4())})
-        print("Calculating system optimal score")
-        start_t = time.time()
-        optimal_score = function_map.get(BRUTE_FORCE)(ordered_systems[trial])
-        end_t = time.time()
-        print(
-            f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
-        for repetition in range(args.repetitions):
-            score, func_args = run_trial(system=ordered_systems[trial],
+    key = f"{args.distribution}-{args.utility}"
+    data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
+    sys_opts = {}
+    for trial in range(args.num_systems):
+        save_file = export_scenario_to_json(systems[trial], JSON_SAVE_PATH)
+        optimal_score = calc_and_time_optimal(system=systems[trial])
+        for repetition in range(args.trial_repetitions):
+            score, func_args = run_trial(system=systems[trial],
                                          max_iterations=args.iterations_per_trial,
                                          beta=args.beta,
                                          temperature=args.temperature,
@@ -99,18 +140,28 @@ def system_analysis_runner(args):
                                          agent_util=args.utility, data_key=key,
                                          distribution=args.distribution)
 
-            data_collector.summarize_results(save_file, func_args, avg_score=score, optimal_score=optimal_score)
-    return
+            fm_rank[systems[trial].id].append(score)
+            re_rank[systems[trial].id].append(score)
+            od_rank[systems[trial].id].append(score)
+
+            data_collector.summarize_results(save_file, {key: func_args}, avg_score=score, optimal_score=optimal_score)
+
+    plot_scores_by_rank(data=fm_rank, title="Feasibility Margin Run Data", x_label="FM rank", sys_opts=sys_opts)
+    plot_scores_by_rank(data=re_rank, title="Resource Entropy Run Data", x_label="RE rank", sys_opts=sys_opts)
+    plot_scores_by_rank(data=od_rank, title="Overlap Density Run Data", x_label="OD rank", sys_opts=sys_opts)
 
 
 def parameter_analysis_runner(args, b=None, temp=None):
     """
-    Parse arguments from CMD or app.props, create a system, run targeted parameter analysis.
+    Run trials to test different parameter values over n distributions and m utility functions with a set system.
 
-    :param args: command line arguments, or default values from application.properties
-    :param b: is this a beta experiment
-    :param temp: is this a temperature experiment
-    :return: none
+    Plots:
+        Zoomed Plots:
+            X: target parameter values
+            Y: the box plot of trial_repetitions scores per trial
+        Param Analysis:
+            X: target parameter values
+            Y: the box plot of trial_repetitions averaged scores per trial
     """
     beta_vals = np.arange(args.beta, MAX_BETA + BETA_STEP_SIZE, BETA_STEP_SIZE) if b else np.array([])
     temperature_vals = np.logspace(
@@ -140,18 +191,14 @@ def parameter_analysis_runner(args, b=None, temp=None):
         (args.resource_val_lb, args.resource_val_ub))
 
     save_file = export_scenario_to_json(system, JSON_SAVE_PATH)
-    print("Calculating system optimal score")
-    start_t = time.time()
-    optimal_score = function_map.get(BRUTE_FORCE)(system)
-    end_t = time.time()
-    print(
-        f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
+
+    optimal_score = calc_and_time_optimal(system=system)
     for utility in args.utility.split(","):
         print(f"STARTING RUNS FOR {utility}")
         for param_vals, param_label, distribution in [(beta_vals, BETA, APPROX_BEST_RESPONSE),
                                                       (temperature_vals, TEMP, LOGIT_RESPONSE)]:
             key = f"{distribution}-{utility}"
-            data_collector = DataCollector(data_key=[key], uuid_file_map={key: str(uuid.uuid4())})
+            data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
             if not param_vals.any():
                 continue
 
@@ -169,26 +216,6 @@ def parameter_analysis_runner(args, b=None, temp=None):
                     param_score_history[f"{utility},{param_label},{param:.3f}"].append(score)
                     data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
 
-    # TODO:: FILES OVERWRITTEN BETWEEN RUNS, ADD DATE/TIME TO THE END OF THE FILE
     run_data = parse_score_history(param_score_history)
     generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score)
     generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score)
-
-
-def parse_score_history(score_history):
-    parsed_data = {}
-
-    for data_key, scores in score_history.items():
-        for param_type in [BETA, TEMP]:
-            if param_type in data_key:
-                utility = data_key.split(param_type)[0][:-1]
-                param_value = float(data_key.replace(utility, '').replace(param_type, '').replace(',', ''))
-
-                if (utility, param_type) not in parsed_data:
-                    parsed_data[(utility, param_type)] = {'x': [], 'y': [], 'scores': []}
-
-                parsed_data[(utility, param_type)]['x'].append(param_value)
-                parsed_data[(utility, param_type)]['y'].append(np.mean(scores))
-                parsed_data[(utility, param_type)]['scores'].append(scores)
-
-    return parsed_data

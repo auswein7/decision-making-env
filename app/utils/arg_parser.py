@@ -1,7 +1,6 @@
 import argparse
 import configparser
 
-# TODO:: REMOVE GENETIC PARAMS, REORDER TO REFLECT APP.PROPS ORDER
 
 def read_app_properties():
     """
@@ -12,16 +11,14 @@ def read_app_properties():
     """
     config = configparser.ConfigParser()
     config.read('application.properties')
-
-    # Parse command-line arguments
     parser = argparse.ArgumentParser()
 
-    # Add arguments with default values from the properties file
     parser.add_argument(
-        "--num_trials",
+        "--trial_repetitions",
         type=int,
-        default=int(config['DEFAULT'].get('num_trials', "0")),
-        help="The number of random system configurations to test"
+        default=int(config['DEFAULT'].get('trial_repetitions', "1")),
+        help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
+             "averages."
     )
 
     parser.add_argument(
@@ -102,55 +99,6 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--beta",
-        type=float,
-        default=float(config['DEFAULT'].get('beta', "0.0")),
-        help="Beta value for the approximate best response algorithm"
-    )
-
-    parser.add_argument(
-        "--temperature",
-        type=float,
-        default=float(config['DEFAULT'].get('temperature', "0.0")),
-        help="Temperature value for the logit response algorithm"
-    )
-
-    parser.add_argument(
-        "--analyze_beta",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('analyze_beta', "False").lower() in ['true', '1', 'yes'],
-        help=""
-    )
-
-    parser.add_argument(
-        "--analyze_temperature",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('analyze_temperature', "False").lower() in ['true', '1', 'yes'],
-        help=""
-    )
-
-    parser.add_argument(
-        "--analyze_system",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('analyze_system', "False").lower() in ['true', '1', 'yes'],
-        help=""
-    )
-
-    parser.add_argument(
-        "--best_response_gt",
-        type=lambda x: x.lower() in ['true', '1', 'yes'],
-        default=config['DEFAULT'].get('best_response_gt', "False").lower() in ['true', '1', 'yes'],
-        help="Plot best response output on graphs in parameter analysis"
-     )
-
-    parser.add_argument(
-        "--algorithm",
-        type=str,
-        default=str(config['DEFAULT'].get('algorithm', "")),
-        help="The algorithm to use for agent allocation"
-    )
-
-    parser.add_argument(
         "--distribution",
         type=str,
         default=str(config['DEFAULT'].get('distribution', "")),
@@ -172,14 +120,60 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--trial_repetitions",
-        type=int,
-        default=int(config['DEFAULT'].get('trial_repetitions', "1")),
-        help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
-             "averages."
+        "--beta",
+        type=float,
+        default=float(config['DEFAULT'].get('beta', "0.0")),
+        help="Beta value for the approximate best response algorithm"
     )
 
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=float(config['DEFAULT'].get('temperature', "0.0")),
+        help="Temperature value for the logit response algorithm"
+    )
 
+    parser.add_argument(
+        "--best_response_gt",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('best_response_gt', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--analyze_system",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_system', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--num_systems",
+        type=int,
+        default=int(config['DEFAULT'].get('num_systems', "0")),
+        help=""
+    )
+
+    parser.add_argument(
+        "--analyze_beta",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_beta', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--analyze_temperature",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('analyze_temperature', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--find_optimal_iterations",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('find_optimal_iterations', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
 
     args = parser.parse_args()
     return args
