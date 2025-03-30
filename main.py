@@ -1,15 +1,10 @@
 from app.runner.run_experiments import filter_run
-from app.runner.run_experiments import run_from_json
 from app.utils.arg_parser import read_app_properties
 from app.utils.constants import VALID_DIST_NAMES, VALID_UTIL_NAMES
 
 # TODO:: Define what it means to run an experiment
 def main(args):
-    load_from_config = bool(args.load_from_config)
-    if load_from_config:
-        run_from_json(args)
-    else:
-        filter_run(args)
+    filter_run(args)
 
 
 def validate_run(args):
@@ -21,15 +16,10 @@ def validate_run(args):
         args.resource_val_lb > args.resource_val_ub,
         args.agent_action_len_lb > args.agent_action_len_ub,
         args.agent_subset_len_lb > args.agent_subset_len_ub,
-        args.num_systems < 0
+        args.num_systems < 0,
+        args.trial_repetitions < 0
     ]):
         print("Infeasible system configuration, check input arguments.")
-        return False
-
-    # Utility validation
-    utility_list = args.utility.split(',')
-    if args.analyze_system and len(utility_list) > 1:
-        print("Can select only one utility function for system analysis runs.")
         return False
 
     # Define running modes
@@ -47,12 +37,36 @@ def validate_run(args):
         any(mode_3_flags)
     ])
 
+    # Utility validation
+    utility_list = args.utility.split(',')
+    if mode_1 and len(utility_list) > 1:
+        print("Can select only one utility function for system analysis runs.")
+        return False
+
+    if mode_2 and len(utility_list) > 1:
+        print("Can select only one utility function for opt iteration runs.")
+        return False
+
+    # Distribution validation
+    dist_list = args.distribution.split(',')
+    if mode_1 and len(dist_list) > 1:
+        print("Can select only one distribution function for system analysis runs.")
+        return False
+
+    if mode_2 and len(dist_list) > 1:
+        print("Can select only one distribution function for opt iteration runs.")
+        return False
+
+    if any(mode_3_flags) and len(args.system_file_uuids.split(',')) > 1:
+        print("Can only load one previous model for parameter analysis runs.")
+
     if active_modes > 1:
         print("Cannot run in multiple active modes.")
         return False
 
     # Distribution and utility function validity
-    if args.distribution not in VALID_DIST_NAMES:
+    invalid_dists = [dist for dist in dist_list if dist not in VALID_DIST_NAMES]
+    if invalid_dists:
         print("Unknown distribution name.")
         return False
 

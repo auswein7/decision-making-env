@@ -1,6 +1,3 @@
-import uuid
-
-
 class System:
     """
     A class representing a System.
@@ -12,13 +9,13 @@ class System:
         id: uuid identifier
     """
 
-    def __init__(self, resources, agents, m):
+    def __init__(self, resources, agents, m, id):
         self.resources = resources
         self.agents = agents
         self.M = m
         self.resource_coverage = set()
         self.score = 0
-        self.id = uuid.uuid4().hex
+        self.id = id
 
     def system_score(self):
         """

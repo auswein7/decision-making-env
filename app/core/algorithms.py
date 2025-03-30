@@ -2,8 +2,6 @@ from itertools import product
 
 from pulp import LpMaximize, LpProblem, LpVariable, lpSum
 
-from app.utils.common_utils import format_agent_data
-
 
 # TODO:: this function is broken, results do not equal brute force results
 def ilp_response(system=None):
@@ -14,8 +12,6 @@ def ilp_response(system=None):
 
     # Compute weight and coverage values for given system
     resource_weights = [resource.value for resource in system.resources]
-
-    agents = format_agent_data(agents)
 
     # Strip resource value from list and sort resources by id
     for id in agents:

@@ -16,7 +16,6 @@ class Distribution:
     """
 
     def __init__(self, distribution, beta, temperature):
-        print(f"Initializing distribution of type {distribution}. Beta {beta}, Temperature {temperature}.")
         self.distribution = distribution
         self.beta = beta
         self.temperature = temperature

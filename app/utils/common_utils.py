@@ -2,7 +2,6 @@ import json
 import math
 import os
 import time
-import uuid
 from datetime import datetime
 from itertools import combinations
 
@@ -10,44 +9,56 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 
+from app.core.algorithms import function_map
 from app.models.agent import Agent
 from app.models.resource import Resource
-from app.core.algorithms import function_map
 from app.models.system import System
 from app.utils.constants import *
 
+
 # TODO:: COMMENT FUNCS IN THIS FILE
 
-# TODO:: REFACTOR TO COMPLY WITH NEW CHANGES TO CLASSES
-def load_scenario_from_json(file_path):
+# TODO:: PARAM ANALYSIS PLOTS DO NOT HAVE EXACT SAME Y AXIS
+
+# make sure to not load duplicate system configurations
+loaded_systems = []
+def load_scenario_from_json(system_file_uuids):
     """
     Load scenario data from the scenarios directory
 
-    :param file_path: path to scenario json file
-    :return: sys, algorithm
+    :param system_file_uuids: uuids of target systems to load
+    :return: systems: the target systems requested
     """
-    with open(file_path, 'r') as file:
-        data = json.load(file)
+    systems = []
+    for sys_id in system_file_uuids:
+        if sys_id not in loaded_systems:
+            loaded_systems.append(sys_id)
 
-        resources = [
-            Resource(r["id"], r["value"])
-            for r in data["resources"]
-        ]
+            file_path = os.path.join(JSON_LOAD_PATH, sys_id + ".json")
+            with open(file_path, 'r') as file:
+                data = json.load(file)
 
-        agents = [
-            Agent(a["id"], (a["action_set"]))
-            for a in data["agents"]
-        ]
+                resources = [
+                    Resource(r["id"], r["value"])
+                    for r in data["resources"]
+                ]
 
-        # convert agent action set to frozenset of resources
-        for agent in agents:
-            for i, subset in enumerate(agent.action_set):
-                agent.action_set[i] = [r for r in resources if r.id in subset]
-            agent.action_set = {frozenset(action) for action in agent.action_set}
+                agents = [
+                    Agent(a["id"], (a["action_set"]), None)
+                    for a in data["agents"]
+                ]
 
-        m = data["system"]["m"]
-        sys = System(resources=resources, agents=agents, m=m)
-        return sys
+                # convert agent action set to frozenset of resources
+                for agent in agents:
+                    for i, subset in enumerate(agent.action_set):
+                        agent.action_set[i] = {r for r in resources if r.id in subset}
+
+                m = data["system"]["m"]
+                id = data["system"]["id"]
+                sys = System(resources=resources, agents=agents, m=m, id=id)
+                systems.append(sys)
+
+    return systems
 
 
 def export_scenario_to_json(system=None, file_path="app/out"):
@@ -58,12 +69,11 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     :param file_path: path to scenario json file
     :return: filename: name of created scenario json file
     """
-    uuid_str = uuid.uuid4()
 
     # visualize a system per configuration saved
-    visualize_system_configuration(system, uuid_str, file_path)
+    visualize_system_configuration(system, system.id, file_path)
 
-    file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.json")
+    file_name = os.path.join(file_path, "saved_models", f"{system.id}.json")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
     resources_data = [{"id": resource.id, "value": resource.value} for resource in system.resources]
@@ -80,6 +90,7 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     ]
 
     system_data = {
+        "id": system.id,
         "m": system.M,
     }
 
@@ -148,7 +159,7 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
     plt.savefig(file_name)
 
 
-def generate_param_analysis_plot(data, sys_optimal):
+def generate_param_analysis_plot(data, sys_optimal, sys_id):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
@@ -160,19 +171,20 @@ def generate_param_analysis_plot(data, sys_optimal):
         plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
         plt.xticks(ticks=range(1, len(values['x']) + 1), labels=values['x'])
 
+        plt.ylim(0, 1)
         plt.xlabel(f"{var_name}", fontsize=8)
         plt.ylabel("Normalized Score", fontsize=8)
         plt.title(f"{var_name} vs System Score ({utility})", fontsize=10)
         plt.grid(alpha=0.5)
 
-        filename = os.path.join(folder_path, f"{var_name}_{utility}_{timestamp}.png")
+        filename = os.path.join(folder_path, f"{sys_id}_{timestamp}.png")
         plt.savefig(filename, dpi=300)
         plt.close()
 
 
 def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System Scores', sys_opts=None):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    folder_path = os.path.join(JSON_SAVE_PATH, f"{title.replace(' ', '_')}")
+    folder_path = os.path.join(JSON_SAVE_PATH, f"{title.replace(' ', '_').lower()}")
     os.makedirs(folder_path, exist_ok=True)
 
     sorted_items = sorted(data.items(), key=lambda x: x[1][0])
@@ -203,11 +215,11 @@ def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System S
     plt.grid(alpha=0.5)
     plt.tight_layout()
 
-    filename = os.path.join(folder_path, f"{title.replace(' ', '_')}_{x_label.replace(' ', '_')}_{timestamp}.png")
+    filename = os.path.join(folder_path, f"{x_label.replace(' ', '_').lower()}_{timestamp}.png")
     plt.savefig(filename, dpi=300)
     plt.close()
 
-def generate_zoomed_analysis_plot(data, sys_optimal):
+def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-zoom")
@@ -217,20 +229,21 @@ def generate_zoomed_analysis_plot(data, sys_optimal):
             normalized_scores = np.array(scores) / sys_optimal
 
             plt.figure(figsize=(8, 5))
+            plt.ylim(0, 1)
             plt.plot(range(len(normalized_scores)), normalized_scores, marker='o', color="blue")
             plt.xlabel('Repetition', fontsize=8)
             plt.ylabel('Norm Score', fontsize=8)
             plt.title(f'{var_name}:{param_value} with {utility}', fontsize=10)
             plt.grid(alpha=0.5)
 
-            filename = os.path.join(folder_path, f"{var_name}_{utility}_{param_value}_{timestamp}.png")
+            filename = os.path.join(folder_path, f"{sys_id}_{param_value}_{timestamp}.png")
             plt.savefig(filename, dpi=300)
             plt.close()
 
-def plot_optimal_iterations(data, sys_optimal):
+def plot_optimal_iterations(data, sys_optimal, sys_id):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     title = "Normalized Scores vs Iterations"
-    folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_"))
+    folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_").lower())
     os.makedirs(folder_path, exist_ok=True)
 
     sorted_items = sorted(data.items())
@@ -242,7 +255,8 @@ def plot_optimal_iterations(data, sys_optimal):
         box_data.append(norm_scores)
 
     plt.figure(figsize=(12, 6))
-    plt.boxplot(box_data, vert=True, patch_artist=True, boxprops=dict(facecolor="lightcoral"))
+    plt.ylim(0, 1)
+    plt.boxplot(box_data, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
     plt.xticks(ticks=range(1, len(x_labels) + 1), labels=x_labels)
     plt.title(title)
     plt.xlabel("Iterations")
@@ -250,7 +264,7 @@ def plot_optimal_iterations(data, sys_optimal):
     plt.grid(alpha=0.5)
     plt.tight_layout()
 
-    filename = os.path.join(folder_path, f"{title.replace(' ', '_')}_{timestamp}.png")
+    filename = os.path.join(folder_path, f"{sys_id}_{timestamp}.png")
     plt.savefig(filename, dpi=300)
     plt.close()
 

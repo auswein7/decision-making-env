@@ -19,12 +19,12 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
 
     func_args = {k: v for k, v in locals().items() if k not in EXCLUDE_KEYS}
     print(
-        f"\nBeginning trial {trial_num} with {max_iterations} iterations using {PROB_RESPONSE} algorithm with params:\n"
-        f"beta: {beta}\n"
-        f"temperature: {temperature}\n"
-        f"distribution: {distribution}\n"
-        f"utility: {agent_util}\n"
-        f"conv_iter: {conv_iter}.\n")
+        f"\nBeginning trial {trial_num} with {max_iterations} iterations:\n"
+        f"\tdistribution: {distribution}\n"
+        f"\tutility: {agent_util}\n"
+        f"\tbeta: {beta}\n"
+        f"\ttemperature: {temperature}\n"
+        f"\tconv_iter: {conv_iter}.\n")
 
     iteration = 0
     if data_collector is not None:

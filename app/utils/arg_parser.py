@@ -1,7 +1,7 @@
 import argparse
 import configparser
 
-
+# TODO:: fill out all help documentation
 def read_app_properties():
     """
     Function allows all arguments for system creation to be passed through CMD. Default values are pulled from
@@ -16,9 +16,8 @@ def read_app_properties():
     parser.add_argument(
         "--trial_repetitions",
         type=int,
-        default=int(config['DEFAULT'].get('trial_repetitions', "1")),
-        help="Amount of trials to repeat with a set parameter value. Used in custom run for parameter analysis"
-             "averages."
+        default=int(config['DEFAULT'].get('trial_repetitions', "0")),
+        help="Amount of trials to repeat with a set configuration."
     )
 
     parser.add_argument(
@@ -95,7 +94,7 @@ def read_app_properties():
         "--load_from_config",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('load_from_config', "False").lower() in ['true', '1', 'yes'],
-        help="Boolean to load from predefined json, or generate random system"
+        help="Boolean to load from predefined json, or generate random system configurations"
     )
 
     parser.add_argument(
@@ -110,13 +109,14 @@ def read_app_properties():
         type=str,
         default=str(config['DEFAULT'].get('utility', "")),
         help="How will the agents weight the value of each resource relative to other agents presence, comma separated"
+             "list of utility functions to run in sequentially."
     )
 
     parser.add_argument(
         "--system_convergence_iter",
         type=int,
         default=int(config['DEFAULT'].get('system_convergence_iter', "0")),
-        help="The upper bound on how many resources can be covered in one subset of agent action"
+        help=""
     )
 
     parser.add_argument(
@@ -172,6 +172,13 @@ def read_app_properties():
         "--find_optimal_iterations",
         type=lambda x: x.lower() in ['true', '1', 'yes'],
         default=config['DEFAULT'].get('find_optimal_iterations', "False").lower() in ['true', '1', 'yes'],
+        help=""
+    )
+
+    parser.add_argument(
+        "--system_file_uuids",
+        type=str,
+        default=str(config['DEFAULT'].get('system_file_uuids', "")),
         help=""
     )
 

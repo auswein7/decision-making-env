@@ -55,7 +55,8 @@ class DataCollector:
                 "action_sets": format_agent_data(system.agents),
                 "num_resources": len(system.resources),
                 "resource_values": formatted_resources,
-                "coverable_resources": DataCollector.get_coverable_resources(system.agents, system.resources, system.M)
+                "coverable_resources": DataCollector.get_coverable_resources(system.agents, system.resources, system.M),
+                "system_id": system.id
             })}
 
             filename = os.path.join(JSON_SAVE_PATH, "sim_summaries", data_key,
