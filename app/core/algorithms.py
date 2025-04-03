@@ -81,7 +81,7 @@ def ilp_response(system=None):
 
     return system.score
 
-
+#TODO:: need something faster than brute force
 def brute_force(system=None):
     """
     Compute the highest attainable score from a given system configuration.

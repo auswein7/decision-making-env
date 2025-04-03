@@ -15,13 +15,11 @@ from app.models.resource import Resource
 from app.models.system import System
 from app.utils.constants import *
 
-
 # TODO:: COMMENT FUNCS IN THIS FILE
 
-# TODO:: PARAM ANALYSIS PLOTS DO NOT HAVE EXACT SAME Y AXIS
-
-# make sure to not load duplicate system configurations
 loaded_systems = []
+
+
 def load_scenario_from_json(system_file_uuids):
     """
     Load scenario data from the scenarios directory
@@ -69,8 +67,6 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     :param file_path: path to scenario json file
     :return: filename: name of created scenario json file
     """
-
-    # visualize a system per configuration saved
     visualize_system_configuration(system, system.id, file_path)
 
     file_name = os.path.join(file_path, "saved_models", f"{system.id}.json")
@@ -115,7 +111,7 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
     :param file_path: save directory of this visualization
     :param uuid_str: UUID of json file that will be exported in saved_models
     :param system: initial system state in simulation
-    :return:
+    :return: None
     """
     file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.png")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -160,6 +156,15 @@ def visualize_system_configuration(system=None, uuid_str=None, file_path="app/ou
 
 
 def generate_param_analysis_plot(data, sys_optimal, sys_id):
+    """
+    For all parameters, distributions, and utility functions used in a parameter analysis run. Render a box plot of the
+    scores over all repetitions.
+
+    :param data: formatted dictionary of run data
+    :param sys_optimal: optimal score for the tested system
+    :param sys_id: system.id uuid
+    :return: None
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
@@ -171,6 +176,7 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
         plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
         plt.xticks(ticks=range(1, len(values['x']) + 1), labels=values['x'])
 
+        # TODO:: angle the x-axis labels
         plt.ylim(0, 1)
         plt.xlabel(f"{var_name}", fontsize=8)
         plt.ylabel("Normalized Score", fontsize=8)
@@ -183,6 +189,15 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
 
 
 def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System Scores', sys_opts=None):
+    """
+    For all systems create in a system analysis run. Generate a box plot of scores over all repetitions.
+
+    :param data: formatted dictionary of run data
+    :param title: plt title
+    :param x_label: x_axis label
+    :param sys_opts: optimal scores for all systems
+    :return: None
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     folder_path = os.path.join(JSON_SAVE_PATH, f"{title.replace(' ', '_').lower()}")
     os.makedirs(folder_path, exist_ok=True)
@@ -219,7 +234,17 @@ def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System S
     plt.savefig(filename, dpi=300)
     plt.close()
 
+
 def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
+    """
+    For all parameters, distributions, and utility functions used in a parameter analysis run. Render the scores
+    attained during repetitions.
+
+    :param data: formatted dictionary of run data
+    :param sys_optimal: optimal score for the tested system
+    :param sys_id: system.id uuid
+    :return: None
+    """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-zoom")
@@ -240,7 +265,17 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
             plt.savefig(filename, dpi=300)
             plt.close()
 
+
 def plot_optimal_iterations(data, sys_optimal, sys_id):
+    """
+    For all distribution iterations render the box plot score of the repetitions.
+
+    :param data: formatted dictionary of run data
+    :param sys_optimal: optimal score for the tested system
+    :param sys_id: system.id uuid
+    :return: None
+    """
+    # TODO:: add {sys_uuid}_{iterations}_{distribution}_{utility} for title
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     title = "Normalized Scores vs Iterations"
     folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_").lower())
@@ -268,7 +303,14 @@ def plot_optimal_iterations(data, sys_optimal, sys_id):
     plt.savefig(filename, dpi=300)
     plt.close()
 
+
 def format_agent_data(agents):
+    """
+    Convert agent action sets, and resource id within actions to parsable structure.
+
+    :param agents: system agents
+    :return: formatted agent data dictionary
+    """
     out = {agent.id: [] for agent in agents}
     for agent in agents:
         for subset in agent.action_set:
@@ -280,6 +322,13 @@ def format_agent_data(agents):
 
 
 def compute_overlap_density(agents, resources):
+    """
+    Compute the overlap density to quantify system difficulty.
+
+    :param agents: system agents
+    :param resources: system resources
+    :return: overlap density of a system
+    """
     reach_sets = []
     for agent in agents:
         covered = set()
@@ -299,6 +348,13 @@ def compute_overlap_density(agents, resources):
 
 
 def compute_agent_resource_entropy(agents, resources):
+    """
+    Compute agent_resource_entropy to quantify system difficulty.
+
+    :param agents: system agents
+    :param resources: system resources
+    :return: agent_resource_entropy of a system
+    """
     resource_counts = {r: 0 for r in resources}
     total_hits = 0
 
@@ -314,6 +370,13 @@ def compute_agent_resource_entropy(agents, resources):
 
 
 def compute_feasibility_margin(agents, resources, M):
+    """
+    Compute feasibility_margin to quantify system difficulty.
+
+    :param agents: system agents
+    :param resources: system resources
+    :return: feasibility_margin of a system
+    """
     resource_to_agents = {r: set() for r in resources}
 
     for agent in agents:
@@ -331,6 +394,12 @@ def compute_feasibility_margin(agents, resources, M):
 
 
 def compute_system_difficulties(systems):
+    """
+    Compute difficulties for system across all three metrics.
+
+    :param systems: created systems for system analysis run
+    :return: three dictionaries of system difficulties
+    """
     system_difficulties_fm = {}
     system_difficulties_re = {}
     system_difficulties_od = {}
@@ -346,13 +415,28 @@ def compute_system_difficulties(systems):
 
     return system_difficulties_fm, system_difficulties_re, system_difficulties_od
 
+
 def get_iteration_range(initial_iters, relative_step):
+    """
+    Compute 4 values left of iterations, 5 values right of iterations, with a 10% step size
+
+    :param initial_iters: iteration value passed in app.props
+    :param relative_step: step size
+    :return: list of iterations to test in convergence analysis
+    """
     step = initial_iters * relative_step
     left = [int(initial_iters - step * i) for i in reversed(range(5))]  # center and 4 left
-    right = [int(initial_iters + step * i) for i in range(1, 6)]        # 5 right
+    right = [int(initial_iters + step * i) for i in range(1, 6)]  # 5 right
     return left + right
 
+
 def parse_score_history(score_history):
+    """
+    Format data for parameter analysis run plotting.
+
+    :param score_history: full history over repetitions in a run.
+    :return: formateed plotting data
+    """
     parsed_data = {}
 
     for data_key, scores in score_history.items():
@@ -372,6 +456,12 @@ def parse_score_history(score_history):
 
 
 def calc_and_time_optimal(system):
+    """
+    Calculate the system optimal score and output time taken to calculate.
+
+    :param system: system to compute optimal score for.
+    :return: optimal score of the system
+    """
     print("Calculating system optimal score")
     start_t = time.time()
     optimal_score = function_map.get(BRUTE_FORCE)(system)
@@ -379,6 +469,7 @@ def calc_and_time_optimal(system):
     print(
         f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
     return optimal_score
+
 
 def calculate_system_convergence(score_history, curr_sys):
     """

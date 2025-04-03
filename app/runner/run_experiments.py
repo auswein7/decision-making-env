@@ -94,13 +94,14 @@ def optimal_iteration_runner(args):
                                              agent_util=args.utility, data_key=key,
                                              distribution=args.distribution)
 
-                data_collector.summarize_results(save_file, {key: func_args}, avg_score=score, optimal_score=optimal_score)
+                data_collector.summarize_results(save_file, {key: func_args}, avg_score=score,
+                                                 optimal_score=optimal_score)
                 if iter_range in iter_data:
                     iter_data[iter_range].append(score)
                 else:
                     iter_data[iter_range] = [score]
 
-        plot_optimal_iterations(data=iter_data, sys_optimal=optimal_score,sys_id=sys.id)
+        plot_optimal_iterations(data=iter_data, sys_optimal=optimal_score, sys_id=sys.id)
 
 
 def system_analysis_runner(args):
@@ -119,7 +120,7 @@ def system_analysis_runner(args):
         for _ in range(args.num_systems):
             systems.append(generate_problem_instance(num_resources=args.num_resources, num_agents=args.num_agents,
                                                      action_size_range=(
-                                                     args.agent_action_len_lb, args.agent_action_len_ub),
+                                                         args.agent_action_len_lb, args.agent_action_len_ub),
                                                      action_subset_size_range=(
                                                          args.agent_subset_len_lb, args.agent_subset_len_ub),
                                                      m=args.max_cover,
@@ -134,7 +135,7 @@ def system_analysis_runner(args):
         key = f"{systems[trial].id}-{args.distribution}-{args.utility}"
         data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
         save_file = export_scenario_to_json(systems[trial], JSON_SAVE_PATH) if not args.load_from_config \
-                                                                            else systems[trial].id
+            else systems[trial].id
         optimal_score = calc_and_time_optimal(system=systems[trial])
         sys_opts[systems[trial].id] = optimal_score
         for repetition in range(args.trial_repetitions):
