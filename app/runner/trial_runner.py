@@ -2,7 +2,7 @@ import random
 from copy import deepcopy
 
 from app.core.distributions import Distribution
-from app.core.utils import marginal_contribution_utility, equal_share_utility, optimistic_utility
+from app.core.agent_utilities import marginal_contribution_utility, equal_share_utility, optimistic_utility
 from app.utils.common_utils import calculate_system_convergence
 from app.utils.constants import *
 

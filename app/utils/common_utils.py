@@ -2,20 +2,20 @@ import json
 import math
 import os
 import time
+import random
 from datetime import datetime
 from itertools import combinations
 
 import matplotlib.pyplot as plt
-import networkx as nx
+from pyvis.network import Network
 import numpy as np
+import colorsys
 
 from app.core.algorithms import function_map
 from app.models.agent import Agent
 from app.models.resource import Resource
 from app.models.system import System
 from app.utils.constants import *
-
-# TODO:: COMMENT FUNCS IN THIS FILE
 
 loaded_systems = []
 
@@ -67,7 +67,7 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     :param file_path: path to scenario json file
     :return: filename: name of created scenario json file
     """
-    visualize_system_configuration(system, system.id, file_path)
+    generate_system_html(system, system.id, file_path)
 
     file_name = os.path.join(file_path, "saved_models", f"{system.id}.json")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
@@ -101,58 +101,121 @@ def export_scenario_to_json(system=None, file_path="app/out"):
 
     return file_name
 
-
-# TODO:: REFACTOR, FAR TOO BUSY WITH MANY RESOURCES AND MANY AGENTS
-def visualize_system_configuration(system=None, uuid_str=None, file_path="app/out"):
-    """
-    Given a system configuration, render a graph representing the coverage of all agents in
-    the system.
-
-    :param file_path: save directory of this visualization
-    :param uuid_str: UUID of json file that will be exported in saved_models
-    :param system: initial system state in simulation
-    :return: None
-    """
-    file_name = os.path.join(file_path, "saved_models", f"{uuid_str}.png")
+def generate_system_html(system, uuid_str, output_dir):
+    file_name = os.path.join(output_dir, "saved_models", f"{uuid_str}.html")
     os.makedirs(os.path.dirname(file_name), exist_ok=True)
 
-    g = nx.DiGraph()
+    net = Network(
+        height="5000px",
+        width="5000px",
+        bgcolor="#ffffff",
+        font_color="black",
+        directed=True
+    )
 
-    agent_color = "blue"
-    uncovered_resource_color = "green"
-    subsets = {}
+    net.set_options("""
+    {
+      "autoResize": false,
+      "edges": {
+        "color": { "highlight": "red" },
+        "smooth": { "enabled": false }
+      },
+      "physics": {
+        "enabled": true,
+        "stabilization": {
+          "enabled": true,
+          "iterations": 500,
+          "updateInterval": 100
+        },
+        "barnesHut": {
+          "gravitationalConstant": -200000,
+          "centralGravity": 0.05,
+          "springLength": 400,
+          "springConstant": 0.02,
+          "avoidOverlap": 1.5
+        }
+      },
+      "interaction": {
+        "dragNodes": true,
+        "dragView": true,
+        "zoomView": true,
+        "hover": true,
+        "highlightNearest": {
+          "enabled": true,
+          "degree": 1,
+          "hover": true
+        }
+      }
+    }
+    """)
 
+    # unique node color per agent
+    n_agents = len(system.agents)
+    agent_colors = {}
+    for idx, agent in enumerate(system.agents):
+        hue = idx / max(n_agents, 1)
+        r, g, b = colorsys.hsv_to_rgb(hue, 0.6, 0.9)
+        hex_color = "#{:02x}{:02x}{:02x}".format(int(r*255), int(g*255), int(b*255))
+        agent_colors[agent.id] = hex_color
+
+    # agent nodes
     for agent in system.agents:
-        node_id = f"A{agent.id}"
-        g.add_node(node_id, color=agent_color, label=f"A{agent.id}")
-        subsets[node_id] = 1  # agents -> subset 1
+        a_n = f"A{agent.id}"
+        net.add_node(
+            a_n,
+            label=a_n,
+            title=f"Agent {agent.id}",
+            color="blue",
+            shape="dot"
+        )
 
+    # add action nodes
+    for agent in system.agents:
+        base_n = f"A{agent.id}"
+        for idx, subset in enumerate(agent.action_set):
+            act_n = f"{base_n}_act{idx}"
+            net.add_node(
+                act_n,
+                label=f"{agent.id}:#{idx}",
+                color=agent_colors[agent.id],
+                shape="diamond"
+            )
+            net.add_edge(base_n, act_n)
+
+    # resource nodes
     for resource in system.resources:
-        node_id = f"R{resource.id}"
-        g.add_node(node_id, color=uncovered_resource_color, label=f"R{resource.id}\nVal: {resource.value}")
-        subsets[node_id] = 0  # resources -> subset 2
+        r_n = f"R{resource.id}"
+        net.add_node(
+            r_n,
+            label=r_n,
+            title=f"Resource {resource.id} (Val: {resource.value})",
+            color="green",
+            shape="square"
+        )
 
+    # Action -> Resource edges
     for agent in system.agents:
-        for i, action_set in enumerate(agent.action_set):
-            for resource in action_set:
-                g.add_edge(f"A{agent.id}", f"R{resource.id}", label=f"{agent.id}: Action Set {i + 1}")
+        for idx, subset in enumerate(agent.action_set):
+            act_n = f"A{agent.id}_act{idx}"
+            for r in subset:
+                net.add_edge(act_n, f"R{r.id}")
 
-    nx.set_node_attributes(g, subsets, "subset")
+    net.write_html(file_name)
+    with open(file_name, 'r') as f:
+        html = f.read()
 
-    # alter k val to change spacing
-    pos = nx.spring_layout(g, k=1.5, seed=42)
-
-    colors = [g.nodes[n]["color"] for n in g.nodes]
-    labels = {n: g.nodes[n]["label"] for n in g.nodes}
-    edge_labels = {(u, v): d["label"] for u, v, d in g.edges(data=True) if "label" in d}
-
-    plt.figure(figsize=(14, 10))
-    nx.draw(g, pos, with_labels=True, labels=labels, node_color=colors, edge_color="gray", node_size=3000, font_size=14,
-            font_weight="bold")
-    nx.draw_networkx_edge_labels(g, pos, edge_labels=edge_labels, font_size=10)
-
-    plt.title("System Configuration")
-    plt.savefig(file_name)
+    # turn off the physics after it settles the nodes
+    injection = """
+    <script type="text/javascript">
+      network.once("stabilizationIterationsDone", function () {
+        network.setOptions({ physics: { enabled: false } });
+      });
+    </script>
+    </body>
+    """
+    html = html.replace("</body>", injection)
+    with open(file_name, 'w') as f:
+        f.write(html)
 
 
 def generate_param_analysis_plot(data, sys_optimal, sys_id):
@@ -176,9 +239,9 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
         plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
         plt.xticks(ticks=range(1, len(values['x']) + 1), labels=values['x'])
 
-        # TODO:: angle the x-axis labels
         plt.ylim(0, 1)
         plt.xlabel(f"{var_name}", fontsize=8)
+        plt.xticks(rotation=45)
         plt.ylabel("Normalized Score", fontsize=8)
         plt.title(f"{var_name} vs System Score ({utility})", fontsize=10)
         plt.grid(alpha=0.5)
@@ -275,7 +338,7 @@ def plot_optimal_iterations(data, sys_optimal, sys_id):
     :param sys_id: system.id uuid
     :return: None
     """
-    # TODO:: add {sys_uuid}_{iterations}_{distribution}_{utility} for title
+    # TODO:: add {sys_uuid}_{iterations}_{distribution}_{utility} for title as well as save file
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     title = "Normalized Scores vs Iterations"
     folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_").lower())
@@ -455,20 +518,26 @@ def parse_score_history(score_history):
     return parsed_data
 
 
-def calc_and_time_optimal(system):
+def calc_and_time_optimal(system, init_from_opt):
     """
     Calculate the system optimal score and output time taken to calculate.
 
     :param system: system to compute optimal score for.
+    :param init_from_opt: clear the agent actions or not from brute force calc
     :return: optimal score of the system
     """
     print("Calculating system optimal score")
     start_t = time.time()
-    optimal_score = function_map.get(BRUTE_FORCE)(system)
+    optimal_score, optimal_coverage = function_map.get(BRUTE_FORCE)(system, init_from_opt)
     end_t = time.time()
     print(
         f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
-    return optimal_score
+    return optimal_score, optimal_coverage
+
+
+def init_random_actions(system):
+    for agent in system.agents:
+        agent.current_action = random.choice(agent.action_set)
 
 
 def calculate_system_convergence(score_history, curr_sys):

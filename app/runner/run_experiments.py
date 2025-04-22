@@ -8,11 +8,11 @@ from app.models.agent import Agent
 from app.models.resource import Resource
 from app.models.system import System
 from app.runner.trial_runner import run_trial
-from app.utils.common_utils import export_scenario_to_json
 from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot, \
     compute_system_difficulties, plot_scores_by_rank, get_iteration_range, plot_optimal_iterations, parse_score_history, \
-    calc_and_time_optimal, load_scenario_from_json
+    calc_and_time_optimal, load_scenario_from_json, init_random_actions, export_scenario_to_json
 from app.utils.constants import *
+from app.utils.graph_generator import generate_graphs
 
 
 def generate_problem_instance(num_resources, num_agents, action_size_range,
@@ -36,7 +36,6 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
             action = set(random.sample(resources, random.randint(*action_subset_size_range)))
             if action not in action_set:
                 action_set.append(action)
-
         agents.append(Agent(i, action_set, None))
 
     return System(resources, agents, m, uuid.uuid4().hex)
@@ -58,7 +57,9 @@ def filter_run(args):
     if args.analyze_beta or args.analyze_temperature:
         parameter_analysis_runner(args, b=args.analyze_beta, temp=args.analyze_temperature)
         return
-
+    if args.generate_graphs:
+        generate_graphs(args)
+        return
 
 def optimal_iteration_runner(args):
     """
@@ -80,7 +81,10 @@ def optimal_iteration_runner(args):
 
     for sys in system:
         save_file = export_scenario_to_json(sys, JSON_SAVE_PATH) if not args.load_from_config else sys.id
-        optimal_score = calc_and_time_optimal(system=sys)
+        optimal_score, optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=args.init_from_optimal)
+        if args.init_from_random:
+            init_random_actions(system=sys)
+
         key = f"{sys.id}-{args.distribution}-{args.utility}"
         data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
         for trial, iter_range in enumerate(iteration_range):
@@ -136,8 +140,12 @@ def system_analysis_runner(args):
         data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
         save_file = export_scenario_to_json(systems[trial], JSON_SAVE_PATH) if not args.load_from_config \
             else systems[trial].id
-        optimal_score = calc_and_time_optimal(system=systems[trial])
+        optimal_score, optimal_coverage = calc_and_time_optimal(system=systems[trial], init_from_opt=args.init_from_optimal)
         sys_opts[systems[trial].id] = optimal_score
+
+        if args.init_from_random:
+            init_random_actions(system=systems[trial])
+
         for repetition in range(args.trial_repetitions):
             score, func_args = run_trial(system=systems[trial],
                                          max_iterations=args.iterations_per_trial,
@@ -201,9 +209,12 @@ def parameter_analysis_runner(args, b=None, temp=None):
 
     save_file = export_scenario_to_json(system, JSON_SAVE_PATH) if not args.load_from_config else system.id
 
-    optimal_score = calc_and_time_optimal(system=system)
+    optimal_score, optimal_coverage = calc_and_time_optimal(system=system, init_from_opt=args.init_from_optimal)
+
+    if args.init_from_random:
+        init_random_actions(system=system)
+
     for utility in args.utility.split(","):
-        print(f"STARTING RUNS FOR {utility}")
         for param_vals, param_label, distribution in [(beta_vals, BETA, APPROX_BEST_RESPONSE),
                                                       (temperature_vals, TEMP, LOGIT_RESPONSE)]:
             key = f"{system.id}-{distribution}-{utility}"

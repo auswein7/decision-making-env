@@ -82,11 +82,12 @@ def ilp_response(system=None):
     return system.score
 
 #TODO:: need something faster than brute force
-def brute_force(system=None):
+def brute_force(system=None, init_from_opt=False):
     """
     Compute the highest attainable score from a given system configuration.
 
     :param system: object containing all experiment data
+    :param init_from_opt: do not reset agents actions after optimal calc
     :return: system score after brute force calculation
     """
     agents = system.agents
@@ -106,13 +107,18 @@ def brute_force(system=None):
             best_score = score
 
     # reset agent allocations
-    for agent in system.agents:
-        agent.current_action = set()
+    if not init_from_opt:
+        for agent in system.agents:
+            agent.current_action = set()
+
+    optimal_coverage = system.resource_coverage
     # reset coverage map before calling other algorithms
-    system.resource_coverage = {resource.id: 0 for resource in system.resources}
+    if not init_from_opt:
+        system.resource_coverage = {resource.id: 0 for resource in system.resources}
+
     system.score = 0
 
-    return best_score
+    return best_score, optimal_coverage
 
 
 function_map = {

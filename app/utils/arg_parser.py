@@ -118,6 +118,76 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--init_from_optimal",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('init_from_optimal', "False").lower() in ['true', '1', 'yes'],
+        help="Agents start at the optimal action choice. Test if they leave the optimal."
+    )
+
+    parser.add_argument(
+        "--init_from_random",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('init_from_random', "False").lower() in ['true', '1', 'yes'],
+        help="All agents start with a random action selected."
+    )
+
+    parser.add_argument(
+        "--generate_graphs",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('generate_graphs', "False").lower() in ['true', '1', 'yes'],
+        help="Run in graph creation mode."
+    )
+
+    parser.add_argument(
+        "--num_graphs",
+        type=int,
+        default=int(config['DEFAULT'].get('num_systems', "0")),
+        help="Numer of graph to create in graph generation mode."
+    )
+
+    parser.add_argument(
+        "--graph_type",
+        type=str,
+        default=str(config['DEFAULT'].get('graph_type', "")),
+        help="Type of graph to create in graph generation mode."
+    )
+
+    parser.add_argument(
+        "--coverage_probability",
+        type=float,
+        default=float(config['DEFAULT'].get('coverage_probability', "0.5")),
+        help="Probability an agent will add a graph edge to its action set."
+    )
+
+    parser.add_argument(
+        "--erdos_prob",
+        type=float,
+        default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
+        help="Probability to add an edge in erdos renyi graph creation."
+    )
+
+    parser.add_argument(
+        "--geo_radius",
+        type=float,
+        default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
+        help="r variable for random geometric bipartite graph generation."
+    )
+
+    parser.add_argument(
+        "--ws_beta",
+        type=float,
+        default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
+        help="Beta value for watts-strogatz graph generation."
+    )
+
+    parser.add_argument(
+        "--ws_k",
+        type=int,
+        default=int(config['DEFAULT'].get('ws_k', "2")),
+        help="K neighbors for watts-strogatz graph generation."
+    )
+
+    parser.add_argument(
         "--beta",
         type=float,
         default=float(config['DEFAULT'].get('beta', "0.0")),

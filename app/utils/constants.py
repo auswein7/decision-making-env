@@ -18,4 +18,5 @@ HIST_BINS = 20 # amount of bins for histogram generation
 EXCLUDE_KEYS = ["system", "data_collector", "data_key"]  # exclude some function params from data collection
 VALID_DIST_NAMES = [BEST_RESPONSE, APPROX_BEST_RESPONSE, LOGIT_RESPONSE]
 VALID_UTIL_NAMES = [MC_UTILITY, ES_UTILITY, OPTIMISTIC_UTILITY]
+VALID_GRAPH_TYPES = ["erdos_renyi", "random_geometric", "watts_strogatz"]
 OPT_ITER_STEP_SIZE = 0.1

@@ -1,8 +1,8 @@
 from app.runner.run_experiments import filter_run
 from app.utils.arg_parser import read_app_properties
-from app.utils.constants import VALID_DIST_NAMES, VALID_UTIL_NAMES
+from app.utils.constants import VALID_DIST_NAMES, VALID_UTIL_NAMES, VALID_GRAPH_TYPES
 
-# TODO:: Define what it means to run an experiment
+
 def main(args):
     filter_run(args)
 
@@ -17,7 +17,8 @@ def validate_run(args):
         args.agent_action_len_lb > args.agent_action_len_ub,
         args.agent_subset_len_lb > args.agent_subset_len_ub,
         args.num_systems < 0,
-        args.trial_repetitions < 0
+        args.trial_repetitions < 0,
+        args.init_from_optimal and args.init_from_random
     ]):
         print("Infeasible system configuration, check input arguments.")
         return False
@@ -30,12 +31,18 @@ def validate_run(args):
         args.analyze_beta,
         # extend list here if adding more param analysis in future
     ]
+    mode_4 = args.generate_graphs
 
     active_modes = sum([
         bool(mode_1),
         bool(mode_2),
-        any(mode_3_flags)
+        any(mode_3_flags),
+        bool(mode_4)
     ])
+
+    if active_modes > 1:
+        print("Cannot run in multiple active modes.")
+        return False
 
     # Utility validation
     utility_list = args.utility.split(',')
@@ -59,9 +66,14 @@ def validate_run(args):
 
     if any(mode_3_flags) and len(args.system_file_uuids.split(',')) > 1:
         print("Can only load one previous model for parameter analysis runs.")
+        return False
 
-    if active_modes > 1:
-        print("Cannot run in multiple active modes.")
+    if mode_4 and args.num_graphs <= 0:
+        print("Need to generate at least one graph in graph generation mode.")
+        return False
+
+    if mode_4 and args.graph_type not in VALID_GRAPH_TYPES:
+        print("Invalid graph type.")
         return False
 
     # Distribution and utility function validity
