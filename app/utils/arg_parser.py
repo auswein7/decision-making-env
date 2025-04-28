@@ -169,14 +169,14 @@ def read_app_properties():
     parser.add_argument(
         "--geo_radius",
         type=float,
-        default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
+        default=float(config['DEFAULT'].get('geo_radius', "0.1")),
         help="r variable for random geometric bipartite graph generation."
     )
 
     parser.add_argument(
         "--ws_beta",
         type=float,
-        default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
+        default=float(config['DEFAULT'].get('ws_beta', "0.1")),
         help="Beta value for watts-strogatz graph generation."
     )
 

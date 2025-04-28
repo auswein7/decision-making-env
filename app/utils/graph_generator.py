@@ -128,11 +128,10 @@ def generate_watts_strogatz_systems(args):
 
 
 def build_agent(agent_id, neighbors, args):
-    # agent total actions are half of edges
-    num_actions = len(neighbors) // 2
+    num_actions = len(neighbors) // 4
     action_set = []
     for _ in range(num_actions):
-        # agents add a resource to action based on probability
         subset = {r for r in neighbors if random.random() < args.coverage_probability}
-        action_set.append(subset)
+        if subset:
+            action_set.append(subset)
     return Agent(agent_id, action_set, utility=None)

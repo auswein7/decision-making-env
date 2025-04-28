@@ -94,8 +94,12 @@ class Distribution:
             - T → 0: exact best response
             - T → ∞: random behaviors
         """
-        scores = np.array(list(action_scores.values()))
-        max_score = np.max(scores)
+        if action_scores:
+            scores = np.array(list(action_scores.values()))
+            max_score = np.max(scores)
+        else:
+            max_score = 0
+
         exp_scores = np.exp((scores - max_score) / self.temperature)
         sum_scaled_scores = np.sum(exp_scores)
 

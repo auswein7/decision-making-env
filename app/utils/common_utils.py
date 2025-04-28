@@ -143,7 +143,7 @@ def generate_system_html(system, uuid_str, output_dir):
         "highlightNearest": {
           "enabled": true,
           "degree": 1,
-          "hover": true
+          "hover": false
         }
       }
     }
@@ -176,7 +176,7 @@ def generate_system_html(system, uuid_str, output_dir):
             act_n = f"{base_n}_act{idx}"
             net.add_node(
                 act_n,
-                label=f"{agent.id}:#{idx}",
+                label=f"{agent.id}:{idx}",
                 color=agent_colors[agent.id],
                 shape="diamond"
             )

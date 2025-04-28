@@ -13,7 +13,7 @@ class System:
         self.resources = resources
         self.agents = agents
         self.M = m
-        self.resource_coverage = set()
+        self.resource_coverage = {r.id: 0 for r in resources}
         self.score = 0
         self.id = id
 
