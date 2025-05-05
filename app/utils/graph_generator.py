@@ -129,12 +129,9 @@ def generate_watts_strogatz_systems(args):
 
 def build_agent(agent_id, neighbors, args):
     num_actions = len(neighbors) // 4
-    if num_actions == 0:
-        print("")
-        return None
     action_set = []
     for _ in range(num_actions):
         subset = {r for r in neighbors if random.random() < args.coverage_probability}
         if subset:
             action_set.append(subset)
-    return Agent(agent_id, action_set, utility=None)
+    return Agent(agent_id, action_set, utility=None) if len(action_set) > 0 else None

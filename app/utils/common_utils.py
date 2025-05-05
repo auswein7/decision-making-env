@@ -58,7 +58,9 @@ def load_scenario_from_json(system_file_uuids):
 
     return systems
 
-
+# TODO:: add the metrics here when exporting it to a json
+# TODO:: calculate the optimal system score here as well and export it to json
+# TODO:: will make it must faster when loading in systems, will never callcualte optimal score twice
 def export_scenario_to_json(system=None, file_path="app/out"):
     """
     Export a given random system to json file to be reloaded in future runner.
