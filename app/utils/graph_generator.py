@@ -47,7 +47,7 @@ def generate_erdos_renyi_systems(args):
                 for node in G.neighbors(a)
             ]
             agents.append(build_agent(a, neighbors, args))
-        systems.append(System(resources, agents, args.max_cover, uuid.uuid4().hex))
+        systems.append(System(resources, [a for a in agents if a is not None], args.max_cover, uuid.uuid4().hex))
     return systems
 
 
@@ -76,7 +76,7 @@ def generate_random_geometric_systems(args):
                     neighbors.append(r)
             agents.append(build_agent(a, neighbors, args))
 
-        systems.append(System(resources, agents, args.max_cover, uuid.uuid4().hex))
+        systems.append(System(resources, [a for a in agents if a is not None], args.max_cover, uuid.uuid4().hex))
     return systems
 
 
@@ -123,12 +123,15 @@ def generate_watts_strogatz_systems(args):
             ]
             agents.append(build_agent(a, neighbors, args))
 
-        systems.append(System(resources, agents, args.max_cover, uuid.uuid4().hex))
+        systems.append(System(resources, [a for a in agents if a is not None], args.max_cover, uuid.uuid4().hex))
     return systems
 
 
 def build_agent(agent_id, neighbors, args):
     num_actions = len(neighbors) // 4
+    if num_actions == 0:
+        print("")
+        return None
     action_set = []
     for _ in range(num_actions):
         subset = {r for r in neighbors if random.random() < args.coverage_probability}

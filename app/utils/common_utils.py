@@ -88,6 +88,7 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     system_data = {
         "id": system.id,
         "m": system.M,
+        "optimal": system.opt_score,
     }
 
     simulation_data = {
@@ -526,12 +527,17 @@ def calc_and_time_optimal(system, init_from_opt):
     :param init_from_opt: clear the agent actions or not from brute force calc
     :return: optimal score of the system
     """
+    if system.opt_score is not None:
+        print("System optimal score already calculated, returning...")
+        return system.opt_score, {}
+
     print("Calculating system optimal score")
     start_t = time.time()
     optimal_score, optimal_coverage = function_map.get(BRUTE_FORCE)(system, init_from_opt)
     end_t = time.time()
     print(
         f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
+    system.opt_score = optimal_score
     return optimal_score, optimal_coverage
 
 

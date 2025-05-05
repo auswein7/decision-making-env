@@ -141,7 +141,7 @@ def read_app_properties():
     parser.add_argument(
         "--num_graphs",
         type=int,
-        default=int(config['DEFAULT'].get('num_systems', "0")),
+        default=int(config['DEFAULT'].get('num_graphs', "0")),
         help="Numer of graph to create in graph generation mode."
     )
 

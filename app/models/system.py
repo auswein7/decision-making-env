@@ -16,6 +16,7 @@ class System:
         self.resource_coverage = {r.id: 0 for r in resources}
         self.score = 0
         self.id = id
+        self.opt_score = None
 
     def system_score(self):
         """

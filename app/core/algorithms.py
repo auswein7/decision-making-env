@@ -93,7 +93,7 @@ def brute_force(system=None, init_from_opt=False):
     agents = system.agents
 
     # Extract all possible actions for each agent
-    all_agent_action_sets = [agent.action_set for agent in agents]
+    all_agent_action_sets = [agent.action_set for agent in agents if len(agent.action_set) > 0]
 
     best_score = float('-inf')
 
