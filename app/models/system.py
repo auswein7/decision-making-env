@@ -18,6 +18,7 @@ class System:
         self.id = id
         self.optimal_score = None
         self.optimal_coverage = None
+        self.fesibility
 
     def system_score(self):
         """

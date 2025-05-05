@@ -52,8 +52,14 @@ def load_scenario_from_json(system_file_uuids):
                         agent.action_set[i] = {r for r in resources if r.id in subset}
 
                 m = data["system"]["m"]
-                id = data["system"]["id"]
-                sys = System(resources=resources, agents=agents, m=m, id=id)
+                uuid_id = data["system"]["id"]
+                sys = System(resources=resources, agents=agents, m=m, id=uuid_id)
+                sys.optimal_score = data["system"]["optimal_score"]
+                sys.optimal_coverage = data["system"]["optimal_coverage"]
+                sys.feasibility_margin = data["system"]["feasibility_margin"][uuid_id]
+                sys.resource_entropy = data["system"]["resource_entropy"][uuid_id]
+                sys.overlap_density = data["system"]["overlap_density"][uuid_id]
+
                 systems.append(sys)
 
     return systems
