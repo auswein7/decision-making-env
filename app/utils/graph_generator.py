@@ -8,7 +8,7 @@ from app.models.resource import Resource
 import random
 import math
 
-from app.utils.common_utils import export_scenario_to_json
+from app.utils.common_utils import export_scenario_to_json, calc_and_time_optimal, compute_system_difficulties
 
 
 def generate_graphs(args):
@@ -19,6 +19,15 @@ def generate_graphs(args):
     }
 
     systems = funcs[args.graph_type](args)
+    for sys in systems:
+        opt_score, opt_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+        fm_rank, re_rank, od_rank = compute_system_difficulties(systems=[sys])
+
+        sys.optimal_score = opt_score
+        sys.optimal_coverage = opt_coverage
+        sys.feasibility_margin = fm_rank
+        sys.resource_entropy = re_rank
+        sys.overlap_density = od_rank
     for sys in systems:
         export_scenario_to_json(system=sys)
 

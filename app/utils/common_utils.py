@@ -58,6 +58,7 @@ def load_scenario_from_json(system_file_uuids):
 
     return systems
 
+
 # TODO:: add the metrics here when exporting it to a json
 # TODO:: calculate the optimal system score here as well and export it to json
 # TODO:: will make it must faster when loading in systems, will never callcualte optimal score twice
@@ -90,7 +91,11 @@ def export_scenario_to_json(system=None, file_path="app/out"):
     system_data = {
         "id": system.id,
         "m": system.M,
-        "optimal": system.opt_score,
+        "optimal_score": system.optimal_score,
+        "optimal_coverage": system.optimal_coverage,
+        "feasibility_margin": system.feasibility_margin,
+        "overlap_density": system.overlap_density,
+        "resource_entropy": system.resource_entropy
     }
 
     simulation_data = {
@@ -103,6 +108,7 @@ def export_scenario_to_json(system=None, file_path="app/out"):
         json.dump(simulation_data, json_file, indent=4)
 
     return file_name
+
 
 def generate_system_html(system, uuid_str, output_dir):
     file_name = os.path.join(output_dir, "saved_models", f"{uuid_str}.html")
@@ -158,7 +164,7 @@ def generate_system_html(system, uuid_str, output_dir):
     for idx, agent in enumerate(system.agents):
         hue = idx / max(n_agents, 1)
         r, g, b = colorsys.hsv_to_rgb(hue, 0.6, 0.9)
-        hex_color = "#{:02x}{:02x}{:02x}".format(int(r*255), int(g*255), int(b*255))
+        hex_color = "#{:02x}{:02x}{:02x}".format(int(r * 255), int(g * 255), int(b * 255))
         agent_colors[agent.id] = hex_color
 
     # agent nodes
@@ -529,9 +535,9 @@ def calc_and_time_optimal(system, init_from_opt):
     :param init_from_opt: clear the agent actions or not from brute force calc
     :return: optimal score of the system
     """
-    if system.opt_score is not None:
+    if system.optimal_score is not None:
         print("System optimal score already calculated, returning...")
-        return system.opt_score, {}
+        return system.optimal_score, {}
 
     print("Calculating system optimal score")
     start_t = time.time()
@@ -539,7 +545,7 @@ def calc_and_time_optimal(system, init_from_opt):
     end_t = time.time()
     print(
         f"Optimal System score for this configuration {optimal_score:.3f}, calculated in {end_t - start_t:.3f} seconds")
-    system.opt_score = optimal_score
+    system.optimal_score = optimal_score
     return optimal_score, optimal_coverage
 
 

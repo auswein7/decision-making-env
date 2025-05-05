@@ -37,8 +37,17 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
             if action not in action_set:
                 action_set.append(action)
         agents.append(Agent(i, action_set, None))
+    sys = System(resources, agents, m, uuid.uuid4().hex)
 
-    return System(resources, agents, m, uuid.uuid4().hex)
+    opt_score, opt_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+    fm_rank, re_rank, od_rank = compute_system_difficulties(systems=[sys])
+
+    sys.optimal_score = opt_score
+    sys.optimal_coverage = opt_coverage
+    sys.feasibility_margin = fm_rank
+    sys.resource_entropy = re_rank
+    sys.overlap_density = od_rank
+    return sys
 
 
 def filter_run(args):
@@ -60,6 +69,7 @@ def filter_run(args):
     if args.generate_graphs:
         generate_graphs(args)
         return
+
 
 def optimal_iteration_runner(args):
     """
@@ -140,7 +150,8 @@ def system_analysis_runner(args):
         data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
         save_file = export_scenario_to_json(systems[trial], JSON_SAVE_PATH) if not args.load_from_config \
             else systems[trial].id
-        optimal_score, optimal_coverage = calc_and_time_optimal(system=systems[trial], init_from_opt=args.init_from_optimal)
+        optimal_score, optimal_coverage = calc_and_time_optimal(system=systems[trial],
+                                                                init_from_opt=args.init_from_optimal)
         sys_opts[systems[trial].id] = optimal_score
 
         if args.init_from_random:
