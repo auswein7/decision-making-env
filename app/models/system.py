@@ -18,7 +18,9 @@ class System:
         self.id = id
         self.optimal_score = None
         self.optimal_coverage = None
-        self.fesibility
+        self.feasibility_margin = None
+        self.resource_entropy = None
+        self.overlap_density = None
 
     def system_score(self):
         """

@@ -92,6 +92,7 @@ def optimal_iteration_runner(args):
     for sys in system:
         save_file = export_scenario_to_json(sys, JSON_SAVE_PATH) if not args.load_from_config else sys.id
         optimal_score = sys.optimal_score
+        print(f"--------System optimal {optimal_score}--------")
         if args.init_from_random:
             init_random_actions(system=sys)
 
@@ -152,6 +153,7 @@ def system_analysis_runner(args):
             else systems[trial].id
 
         optimal_score = systems[trial].optimal_score
+        print(f"--------System optimal {optimal_score}--------")
         sys_opts[systems[trial].id] = optimal_score
 
         if args.init_from_random:
@@ -221,6 +223,7 @@ def parameter_analysis_runner(args, b=None, temp=None):
     save_file = export_scenario_to_json(system, JSON_SAVE_PATH) if not args.load_from_config else system.id
 
     optimal_score = system.optimal_score
+    print(f"--------System optimal {optimal_score}--------")
 
     if args.init_from_random:
         init_random_actions(system=system)
