@@ -1,5 +1,5 @@
 import uuid
-
+from app.utils.constants import *
 import networkx as nx
 
 from app.models.agent import Agent
@@ -7,32 +7,63 @@ from app.models.system import System
 from app.models.resource import Resource
 import random
 import math
+import numpy as np
 
 from app.utils.common_utils import export_scenario_to_json, calc_and_time_optimal, compute_system_difficulties
 
-
 def generate_graphs(args):
     funcs = {
-        "erdos_renyi": generate_erdos_renyi_systems,
-        "random_geometric": generate_random_geometric_systems,
-        "watts_strogatz": generate_watts_strogatz_systems,
+        ERDOS_RENYI: generate_erdos_renyi_systems,
+        RAND_GEO: generate_random_geometric_systems,
+        WATTS_STROGATZ: generate_watts_strogatz_systems,
     }
 
-    systems = funcs[args.graph_type](args)
-    for sys in systems:
-        opt_score, opt_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
-        fm_rank, re_rank, od_rank = compute_system_difficulties(systems=[sys])
+    params = []
+    if args.param_sweep:
+        params = compute_param_sweep_vals(args)
 
-        sys.optimal_score = opt_score
-        sys.optimal_coverage = opt_coverage
-        sys.feasibility_margin = fm_rank
-        sys.resource_entropy = re_rank
-        sys.overlap_density = od_rank
-    for sys in systems:
-        export_scenario_to_json(system=sys)
+    if not params:
+        if args.graph_type == ERDOS_RENYI:
+            params = [args.erdos_prob]
+        elif args.graph_type == RAND_GEO:
+            params = [args.geo_radius]
+        elif args.graph_type == WATTS_STROGATZ:
+            params = [args.ws_beta]
+        else:
+            params = []
 
+    for param in params:
+        systems = funcs[args.graph_type](args, param)
+        for sys in systems:
+            sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+            sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity = compute_system_difficulties(systems=[sys])
+            sys.generation_data = {"method": "graph", "graph_type": args.graph_type, "param": param}
+            filter_unreachable_resources(system=sys)
+            export_scenario_to_json(system=sys)
 
-def generate_erdos_renyi_systems(args):
+def compute_param_sweep_vals(args):
+    if args.graph_type == ERDOS_RENYI:
+        erdos_probs = np.arange(args.erdos_prob, MAX_ERDOS_PROB + 0.05/2, 0.05)
+        return erdos_probs
+    if args.graph_type == RAND_GEO:
+        geo_radii = np.arange(args.geo_radius, MAX_GEO_RADIUS + 0.05 / 2, 0.05)
+        return geo_radii
+    if args.graph_type == WATTS_STROGATZ:
+        ws_beta_vals = np.arange(args.ws_beta, MAX_WS_BETA + 0.05 / 2, 0.05)
+        return ws_beta_vals
+        
+def filter_unreachable_resources(system):
+    reachable = set()
+    for agent in system.agents:
+        for action in agent.action_set:
+            reachable.update(action)
+
+    system.resources = [
+        res for res in system.resources
+        if res in reachable
+    ]
+
+def generate_erdos_renyi_systems(args, erdos_prob):
     systems = []
     for _ in range(args.num_graphs):
 
@@ -45,7 +76,7 @@ def generate_erdos_renyi_systems(args):
         G = nx.bipartite.random_graph(
             args.num_agents,
             args.num_resources,
-            args.erdos_prob,
+            erdos_prob,
             seed=None
         )
 
@@ -60,10 +91,7 @@ def generate_erdos_renyi_systems(args):
     return systems
 
 
-def generate_random_geometric_systems(args):
-    """
-    Place agents and resources in [x[0,1] y[0,1]]; edge if distance ≤ geo_radius.
-    """
+def generate_random_geometric_systems(args, geo_radius):
     systems = []
     for _ in range(args.num_graphs):
         # build resources and sample positions
@@ -81,7 +109,7 @@ def generate_random_geometric_systems(args):
             neighbors = []
             for r in resources:
                 rx, ry = pos_res[r.id]
-                if math.hypot(ax - rx, ay - ry) <= args.geo_radius:
+                if math.hypot(ax - rx, ay - ry) <= geo_radius:
                     neighbors.append(r)
             agents.append(build_agent(a, neighbors, args))
 
@@ -89,14 +117,7 @@ def generate_random_geometric_systems(args):
     return systems
 
 
-def generate_watts_strogatz_systems(args):
-    """
-    Generates graphs with lattice structure, higher ws_beta leads to more random structure. Low vals enforce
-    spacial locality.
-
-    :param args:
-    :return:
-    """
+def generate_watts_strogatz_systems(args, ws_beta):
     systems = []
     num_r = args.num_resources
     for _ in range(args.num_graphs):
@@ -118,7 +139,7 @@ def generate_watts_strogatz_systems(args):
         # rewire edges relative to ws_beta
         edges = []
         for (a, r_id) in base_edges:
-            if random.random() < args.ws_beta:
+            if random.random() < ws_beta:
                 # pick a new random resource
                 r_id = random.randrange(num_r)
             edges.append((a, r_id))

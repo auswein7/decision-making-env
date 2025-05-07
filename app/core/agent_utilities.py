@@ -1,7 +1,5 @@
 from copy import deepcopy
-
 from app.utils.constants import DEFAULT_OPTIMISTIC_ALPHA
-
 
 def marginal_contribution_utility(agent, new_action, coverage_map, M):
     """
@@ -17,29 +15,27 @@ def marginal_contribution_utility(agent, new_action, coverage_map, M):
     :return: difference between the agents current action, and the candidate action
     """
     current_action = agent.current_action
+    previous_coverage = filter_coverage_map(coverage_map, current_action)
+
+    old_ids = {r.id for r in current_action}
+    new_ids = {r.id for r in new_action}
+
     new_action_score = 0
     prev_action_score = 0
 
-    previous_coverage = filter_coverage_map(coverage_map, current_action)
+    # score resources newly added
+    for rid in new_ids - old_ids:
+        cov = previous_coverage.get(rid, 0) + 1
+        if cov == M:
+            rv = next(r.value for r in new_action if r.id == rid)
+            new_action_score += rv
 
-    for curr_resource, past_resource in zip(new_action, current_action):
-        curr_resource_id = curr_resource.id
-        curr_resource_value = curr_resource.value
-
-        num_agents = previous_coverage.get(curr_resource_id, 0) + 1
-        if num_agents > M:
-            new_action_score = 0
-        if num_agents == M:
-            new_action_score += curr_resource_value
-
-        prev_resource_id = past_resource.id
-        prev_resource_value = past_resource.value
-
-        num_agents = coverage_map.get(prev_resource_id, 0)
-        if num_agents > M:
-            prev_action_score = 0
-        if num_agents == M:
-            prev_action_score += prev_resource_value
+    # subtract score for resources removed
+    for rid in old_ids - new_ids:
+        cov = coverage_map.get(rid, 0)
+        if cov == M:
+            rv = next(r.value for r in current_action if r.id == rid)
+            prev_action_score += rv
 
     return new_action_score - prev_action_score
 
@@ -57,25 +53,27 @@ def equal_share_utility(agent, new_action, coverage_map, M):
     :return: difference between the agents current action, and the candidate action
     """
     current_action = agent.current_action
+    previous_coverage = filter_coverage_map(coverage_map, current_action)
+
+    old_ids = {r.id for r in current_action}
+    new_ids = {r.id for r in new_action}
+
     new_action_score = 0
     prev_action_score = 0
 
-    previous_coverage = filter_coverage_map(coverage_map, current_action)
+    # score resources newly added
+    for rid in new_ids - old_ids:
+        cov = previous_coverage.get(rid, 0) + 1
+        if cov >= M:
+            rv = next(r.value for r in new_action if r.id == rid)
+            new_action_score += rv / cov
 
-    for curr_resource, past_resource in zip(new_action, current_action):
-        curr_resource_id = curr_resource.id
-        curr_resource_value = curr_resource.value
-
-        num_agents = previous_coverage.get(curr_resource_id, 0) + 1
-        if num_agents >= M:
-            new_action_score += curr_resource_value / num_agents
-
-        prev_resource_id = past_resource.id
-        prev_resource_value = past_resource.value
-
-        num_agents = coverage_map.get(prev_resource_id, 0)
-        if num_agents >= M:
-            prev_action_score += prev_resource_value / num_agents
+    # subtract score for resources removed
+    for rid in old_ids - new_ids:
+        cov = coverage_map.get(rid, 0)
+        if cov >= M:
+            rv = next(r.value for r in current_action if r.id == rid)
+            prev_action_score += rv / cov
 
     return new_action_score - prev_action_score
 
@@ -95,29 +93,31 @@ def optimistic_utility(agent, new_action, coverage_map, M, alpha=DEFAULT_OPTIMIS
     :return: difference between the agents current action, and the candidate action
     """
     current_action = agent.current_action
+    previous_coverage = filter_coverage_map(coverage_map, current_action)
+
+    old_ids = {r.id for r in current_action}
+    new_ids = {r.id for r in new_action}
+
     new_action_score = 0
     prev_action_score = 0
 
-    previous_coverage = filter_coverage_map(coverage_map, current_action)
+    # score resources newly added
+    for rid in new_ids - old_ids:
+        cov = previous_coverage.get(rid, 0) + 1
+        rv = next(r.value for r in new_action if r.id == rid)
+        if cov == 1:
+            new_action_score += rv * alpha
+        elif cov >= M:
+            new_action_score += rv / cov
 
-    for curr_resource, past_resource in zip(new_action, current_action):
-        curr_resource_id = curr_resource.id
-        curr_resource_value = curr_resource.value
-
-        num_agents = previous_coverage.get(curr_resource_id, 0) + 1
-        if num_agents == 1:
-            new_action_score = curr_resource_value * alpha
-        if num_agents >= M:
-            new_action_score += curr_resource_value / num_agents
-
-        prev_resource_id = past_resource.id
-        prev_resource_value = past_resource.value
-
-        num_agents = coverage_map.get(prev_resource_id, 0)
-        if num_agents == 1:
-            prev_action_score = prev_resource_value * alpha
-        if num_agents >= M:
-            prev_action_score += prev_resource_value / num_agents
+    # subtract score for resources removed
+    for rid in old_ids - new_ids:
+        cov = coverage_map.get(rid, 0)
+        rv = next(r.value for r in current_action if r.id == rid)
+        if cov == 1:
+            prev_action_score += rv * alpha
+        elif cov >= M:
+            prev_action_score += rv / cov
 
     return new_action_score - prev_action_score
 
@@ -131,8 +131,7 @@ def filter_coverage_map(coverage_map, action):
     :return: coverage map if the agent is performing no actions
     """
     map_copy = deepcopy(coverage_map)
-    action_ids = [resource.id for resource in action]
-    for resource_id, _ in map_copy.items():
-        if resource_id in action_ids:
-            map_copy[resource_id] -= 1
+    action_ids = {r.id for r in action}
+    for rid in action_ids:
+        map_copy[rid] = max(map_copy.get(rid, 0) - 1, 0)
     return map_copy

@@ -16,11 +16,15 @@ class System:
         self.resource_coverage = {r.id: 0 for r in resources}
         self.score = 0
         self.id = id
+
+        # values for JSON export
         self.optimal_score = None
         self.optimal_coverage = None
         self.feasibility_margin = None
+        self.agent_heterogeneity = None
         self.resource_entropy = None
         self.overlap_density = None
+        self.generation_data = None
 
     def system_score(self):
         """

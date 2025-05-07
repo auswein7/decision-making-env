@@ -64,10 +64,6 @@ def validate_run(args):
         print("Can select only one distribution function for opt iteration runs.")
         return False
 
-    if any(mode_3_flags) and len(args.system_file_uuids.split(',')) > 1:
-        print("Can only load one previous model for parameter analysis runs.")
-        return False
-
     if mode_4 and args.num_graphs <= 0:
         print("Need to generate at least one graph in graph generation mode.")
         return False

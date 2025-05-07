@@ -2,6 +2,7 @@ import random
 import uuid
 
 import numpy as np
+import pandas as pd
 
 from app.core.data_collector import DataCollector
 from app.models.agent import Agent
@@ -10,7 +11,8 @@ from app.models.system import System
 from app.runner.trial_runner import run_trial
 from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot, \
     compute_system_difficulties, plot_scores_by_rank, get_iteration_range, plot_optimal_iterations, parse_score_history, \
-    calc_and_time_optimal, load_scenario_from_json, init_random_actions, export_scenario_to_json
+    calc_and_time_optimal, load_scenario_from_json, init_random_actions, export_scenario_to_json, \
+    plot_normalized_param_average, plot_difficulty_scatter
 from app.utils.constants import *
 from app.utils.graph_generator import generate_graphs
 
@@ -39,14 +41,10 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
         agents.append(Agent(i, action_set, None))
     sys = System(resources, agents, m, uuid.uuid4().hex)
 
-    opt_score, opt_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
-    fm_rank, re_rank, od_rank = compute_system_difficulties(systems=[sys])
-
-    sys.optimal_score = opt_score
-    sys.optimal_coverage = opt_coverage
-    sys.feasibility_margin = fm_rank
-    sys.resource_entropy = re_rank
-    sys.overlap_density = od_rank
+    sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+    sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity = compute_system_difficulties(
+        systems=[sys])
+    sys.generation_data = {"method": "random_gen"}
     return sys
 
 
@@ -82,7 +80,7 @@ def optimal_iteration_runner(args):
     iteration_range = get_iteration_range(args.iterations_per_trial, OPT_ITER_STEP_SIZE)
     iter_data = {}
     if args.load_from_config:
-        system = load_scenario_from_json(args.system_file_uuids.split(','))
+        system = load_scenario_from_json(args.system_file_directory)
     else:
         system = [generate_problem_instance(
             args.num_resources, args.num_agents, (args.agent_action_len_lb, args.agent_action_len_ub),
@@ -92,7 +90,7 @@ def optimal_iteration_runner(args):
     for sys in system:
         save_file = export_scenario_to_json(sys, JSON_SAVE_PATH) if not args.load_from_config else sys.id
         optimal_score = sys.optimal_score
-        print(f"--------System optimal {optimal_score}--------")
+        print(f"-------- System (ID={system.id[:6]}) optimal score: {optimal_score} --------")
         if args.init_from_random:
             init_random_actions(system=sys)
 
@@ -121,63 +119,95 @@ def optimal_iteration_runner(args):
 
 def system_analysis_runner(args):
     """
-    Run trials to test different system configurations for a set distribution, and utility function.
-
-    Plots (3):
-        X: the rank of the system, labeled by first 6 chars of sys.id and rank value
-        Y: the box plot of trial_repetitions scores per trial
+    Run trials to test different system configurations for a set distribution and utility function.
     """
-    systems = []
     if args.load_from_config:
-        systems = load_scenario_from_json(args.system_file_uuids.split(','))
+        systems = load_scenario_from_json(args.system_file_directory)
         args.num_systems = len(systems)
     else:
-        for _ in range(args.num_systems):
-            systems.append(generate_problem_instance(num_resources=args.num_resources, num_agents=args.num_agents,
-                                                     action_size_range=(
-                                                         args.agent_action_len_lb, args.agent_action_len_ub),
-                                                     action_subset_size_range=(
-                                                         args.agent_subset_len_lb, args.agent_subset_len_ub),
-                                                     m=args.max_cover,
-                                                     resource_val_range=(args.resource_val_lb,
-                                                                         args.resource_val_ub)))
+        systems = [
+            generate_problem_instance(
+                num_resources=args.num_resources,
+                num_agents=args.num_agents,
+                action_size_range=(args.agent_action_len_lb, args.agent_action_len_ub),
+                action_subset_size_range=(args.agent_subset_len_lb, args.agent_subset_len_ub),
+                m=args.max_cover,
+                resource_val_range=(args.resource_val_lb, args.resource_val_ub)
+            )
+            for _ in range(args.num_systems)
+        ]
 
-    # sorted easy -> hard
-    fm_rank, re_rank, od_rank = compute_system_difficulties(systems=systems)
+    fm_rank, re_rank, od_rank, ah_rank = compute_system_difficulties(systems)
 
+    fm_vals = {sid: vals[0] for sid, vals in fm_rank.items()}
+    re_vals = {sid: vals[0] for sid, vals in re_rank.items()}
+    od_vals = {sid: vals[0] for sid, vals in od_rank.items()}
+    ah_vals = {sid: vals[0] for sid, vals in ah_rank.items()}
+
+    # collect trial scores per system
+    scores_by_system = {sid: [] for sid in fm_vals}
+
+    # Track optimal scores for box-plot
     sys_opts = {}
-    for trial in range(args.num_systems):
-        key = f"{systems[trial].id}-{args.distribution}-{args.utility}"
-        data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
-        save_file = export_scenario_to_json(systems[trial], JSON_SAVE_PATH) if not args.load_from_config \
-            else systems[trial].id
 
-        optimal_score = systems[trial].optimal_score
-        print(f"--------System optimal {optimal_score}--------")
-        sys_opts[systems[trial].id] = optimal_score
+    for idx, system in enumerate(systems):
+        key = f"{system.id}-{args.distribution}-{args.utility}"
+        data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
+        save_file = (
+            export_scenario_to_json(system, JSON_SAVE_PATH)
+            if not args.load_from_config else
+            system.id
+        )
+
+        optimal_score = system.optimal_score
+        sys_opts[system.id] = optimal_score
+        print(f"-------- System {idx} (ID={system.id[:6]}) optimal score: {optimal_score} --------")
 
         if args.init_from_random:
-            init_random_actions(system=systems[trial])
+            init_random_actions(system=system)
 
-        for repetition in range(args.trial_repetitions):
-            score, func_args = run_trial(system=systems[trial],
-                                         max_iterations=args.iterations_per_trial,
-                                         beta=args.beta,
-                                         temperature=args.temperature,
-                                         data_collector=data_collector, trial_num=trial,
-                                         conv_iter=args.system_convergence_iter,
-                                         agent_util=args.utility, data_key=key,
-                                         distribution=args.distribution)
+        for _ in range(args.trial_repetitions):
+            score, func_args = run_trial(
+                system=system,
+                distribution=args.distribution,
+                agent_util=args.utility,
+                max_iterations=args.iterations_per_trial,
+                beta=args.beta,
+                temperature=args.temperature,
+                data_collector=data_collector,
+                trial_num=idx,
+                conv_iter=args.system_convergence_iter,
+                data_key=key
+            )
 
-            fm_rank[systems[trial].id].append(score)
-            re_rank[systems[trial].id].append(score)
-            od_rank[systems[trial].id].append(score)
+            # Append to each metric for box-plots
+            fm_rank[system.id].append(score)
+            re_rank[system.id].append(score)
+            od_rank[system.id].append(score)
+            ah_rank[system.id].append(score)
+
+            scores_by_system[system.id].append(score)
 
             data_collector.summarize_results(save_file, {key: func_args}, avg_score=score, optimal_score=optimal_score)
 
     plot_scores_by_rank(data=fm_rank, title="Feasibility Margin Run Data", x_label="FM rank", sys_opts=sys_opts)
     plot_scores_by_rank(data=re_rank, title="Resource Entropy Run Data", x_label="RE rank", sys_opts=sys_opts)
     plot_scores_by_rank(data=od_rank, title="Overlap Density Run Data", x_label="OD rank", sys_opts=sys_opts)
+    plot_scores_by_rank(data=ah_rank, title="Agent Heterogeneity Run Data", x_label="AH rank", sys_opts=sys_opts)
+
+    avg_scores = {
+        sid: (sum(lst) / len(lst)) if lst else 0.0
+        for sid, lst in scores_by_system.items()
+    }
+
+    plot_difficulty_scatter(fm_vals, avg_scores, sys_opts, title="Feasibility Margin vs Avg Score",
+                            xlabel="Feasibility Margin")
+    plot_difficulty_scatter(re_vals, avg_scores, sys_opts, title="Resource Entropy vs Avg Score",
+                            xlabel="Resource Entropy")
+    plot_difficulty_scatter(od_vals, avg_scores, sys_opts, title="Overlap Density vs Avg Score",
+                            xlabel="Overlap Density")
+    plot_difficulty_scatter(ah_vals, avg_scores, sys_opts, title="Agent Heterogeneity vs Avg Score",
+                            xlabel="Agent Heterogeneity")
 
 
 def parameter_analysis_runner(args, b=None, temp=None):
@@ -198,58 +228,84 @@ def parameter_analysis_runner(args, b=None, temp=None):
         num=int(np.log2(MAX_TEMP / args.temperature)) + 1, base=10
     ) if temp else np.array([])
 
-    param_score_history = {
-        f"{utility},{BETA},{beta:.3f}": []
-        for utility in args.utility.split(",")
-        for beta in beta_vals
-    }
-    param_score_history.update({
-        f"{utility},{TEMP},{t:.3f}": []
-        for utility in args.utility.split(",")
-        for t in temperature_vals
-    })
+    if args.load_from_config:
+        systems = load_scenario_from_json(args.system_file_directory)
+    else:
+        # generate exactly one system
+        system = generate_problem_instance(
+            args.num_resources,
+            args.num_agents,
+            (args.agent_action_len_lb, args.agent_action_len_ub),
+            (args.agent_subset_len_lb, args.agent_subset_len_ub),
+            args.max_cover,
+            (args.resource_val_lb, args.resource_val_ub)
+        )
+        systems = [system]
 
-    num_trials = max(len(temperature_vals), len(beta_vals))
-    beta_vals = beta_vals if beta_vals.size > 0 else np.zeros(num_trials)
-    temperature_vals = temperature_vals if temperature_vals.size > 0 else np.zeros(num_trials)
+    records = []
+    opt_scores = {}
+    for idx, system in enumerate(systems):
+        optimal_score = system.optimal_score
+        opt_scores[system.id] = optimal_score
+        print(f"-------- System {idx} (ID={system.id[:6]}) optimal score: {optimal_score} --------")
 
-    # only one system configuration for this analysis
-    system = generate_problem_instance(
-        args.num_resources, args.num_agents, (args.agent_action_len_lb, args.agent_action_len_ub),
-        (args.agent_subset_len_lb, args.agent_subset_len_ub), args.max_cover,
-        (args.resource_val_lb, args.resource_val_ub)) \
-        if not args.load_from_config else load_scenario_from_json(args.system_file_uuids.split(','))[0]
+        if args.init_from_random:
+            init_random_actions(system=system)
 
-    save_file = export_scenario_to_json(system, JSON_SAVE_PATH) if not args.load_from_config else system.id
+        param_score_history = {
+            f"{utility},{BETA},{beta:.3f}": []
+            for utility in args.utility.split(",")
+            for beta in beta_vals
+        }
+        param_score_history.update({
+            f"{utility},{TEMP},{t:.3f}": []
+            for utility in args.utility.split(",")
+            for t in temperature_vals
+        })
 
-    optimal_score = system.optimal_score
-    print(f"--------System optimal {optimal_score}--------")
+        num_trials = max(len(temperature_vals), len(beta_vals))
+        beta_vals = beta_vals if beta_vals.size > 0 else np.zeros(num_trials)
+        temperature_vals = temperature_vals if temperature_vals.size > 0 else np.zeros(num_trials)
 
-    if args.init_from_random:
-        init_random_actions(system=system)
+        save_file = export_scenario_to_json(system, JSON_SAVE_PATH) if not args.load_from_config else system.id
 
-    for utility in args.utility.split(","):
-        for param_vals, param_label, distribution in [(beta_vals, BETA, APPROX_BEST_RESPONSE),
-                                                      (temperature_vals, TEMP, LOGIT_RESPONSE)]:
-            key = f"{system.id}-{distribution}-{utility}"
-            data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
-            if not param_vals.any():
-                continue
+        for utility in args.utility.split(","):
+            for param_vals, param_label, distribution in [(beta_vals, BETA, APPROX_BEST_RESPONSE),
+                                                          (temperature_vals, TEMP, LOGIT_RESPONSE)]:
+                key = f"{system.id}-{distribution}-{utility}"
+                data_collector = DataCollector(data_key=[key], sim_sum_uuid={key: str(uuid.uuid4())})
+                if not param_vals.any():
+                    continue
 
-            for trial, param in enumerate(param_vals):
-                for repetition in range(args.trial_repetitions):
-                    score, func_args = run_trial(system=system,
-                                                 max_iterations=args.iterations_per_trial,
-                                                 beta=param if param_label == BETA else None,
-                                                 temperature=param if param_label == TEMP else None,
-                                                 data_collector=data_collector, trial_num=trial,
-                                                 conv_iter=args.system_convergence_iter,
-                                                 agent_util=utility, data_key=key,
-                                                 distribution=distribution)
+                for trial, param in enumerate(param_vals):
+                    for repetition in range(args.trial_repetitions):
+                        score, func_args = run_trial(system=system,
+                                                     max_iterations=args.iterations_per_trial,
+                                                     beta=param if param_label == BETA else None,
+                                                     temperature=param if param_label == TEMP else None,
+                                                     data_collector=data_collector, trial_num=trial,
+                                                     conv_iter=args.system_convergence_iter,
+                                                     agent_util=utility, data_key=key,
+                                                     distribution=distribution)
 
-                    param_score_history[f"{utility},{param_label},{param:.3f}"].append(score)
-                    data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
+                        param_score_history[f"{utility},{param_label},{param:.3f}"].append(score)
+                        data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
 
-    run_data = parse_score_history(param_score_history)
-    generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
-    generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
+                        # record for optimal param values plot
+                        records.append({
+                            'system_id': system.id,
+                            'utility': utility,
+                            'distribution': distribution,
+                            'param_label': param_label,
+                            'param_value': param,
+                            'trial_idx': trial,
+                            'repetition': repetition,
+                            'score': score
+                        })
+
+        run_data = parse_score_history(param_score_history)
+        generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
+        generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
+
+    # generate plot of optimal temp and beta values
+    plot_normalized_param_average(pd.DataFrame(records), optimal_scores=opt_scores)

@@ -1,9 +1,8 @@
-pytest~=8.3.4
 argparse~=1.4.0
 configparser~=7.1.0
-logging~=0.4.9.6
 matplotlib~=3.8.2
 networkx~=3.4.2
 pulp~=2.9.0
 numpy~=1.26.2
-unittest
+pyvis~=0.3.2
+pandas~=2.1.3

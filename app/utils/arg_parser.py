@@ -1,6 +1,7 @@
 import argparse
 import configparser
 
+
 def read_app_properties():
     """
     Function allows all arguments for system creation to be passed through CMD. Default values are pulled from
@@ -160,6 +161,13 @@ def read_app_properties():
     )
 
     parser.add_argument(
+        "--param_sweep",
+        type=lambda x: x.lower() in ['true', '1', 'yes'],
+        default=config['DEFAULT'].get('param_sweep', "False").lower() in ['true', '1', 'yes'],
+        help="Generate num_graphs per parameter in the sweep, will start from passed param, stop at defined maximum in constants.py."
+    )
+
+    parser.add_argument(
         "--erdos_prob",
         type=float,
         default=float(config['DEFAULT'].get('erdos_prob', "0.1")),
@@ -244,10 +252,10 @@ def read_app_properties():
     )
 
     parser.add_argument(
-        "--system_file_uuids",
+        "--system_file_directory",
         type=str,
-        default=str(config['DEFAULT'].get('system_file_uuids', "")),
-        help="List of system_ids to be loaded."
+        default=str(config['DEFAULT'].get('system_file_directory', "")),
+        help="Directory to load systems from."
     )
 
     args = parser.parse_args()

@@ -16,7 +16,6 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
               data_collector=None, trial_num=0,
               conv_iter=float("inf"), data_key=""):
     """Conduct a single trial using the given system, distribution, and utility function."""
-
     func_args = {k: v for k, v in locals().items() if k not in EXCLUDE_KEYS}
     print(
         f"\nBeginning trial {trial_num} with {max_iterations} iterations:\n"
@@ -24,7 +23,8 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
         f"\tutility: {agent_util}\n"
         f"\tbeta: {beta}\n"
         f"\ttemperature: {temperature}\n"
-        f"\tconv_iter: {conv_iter}.\n")
+        f"\tconv_iter: {conv_iter}.\n"
+    )
 
     iteration = 0
     if data_collector is not None:
@@ -41,13 +41,15 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
 
         agent = random.choice(system.agents)
 
+        candidates = list(agent.action_set) + [agent.current_action]
         action_scores = {
             frozenset(action): agent.evaluate_action(action, system, agent.utility_function)
-            for action in agent.action_set
+            for action in candidates
         }
 
         best_action = prob_dist.get_distribution()(action_scores)
         agent.current_action = set(best_action)
+
         system.system_score()
 
         if data_collector is not None:

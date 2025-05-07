@@ -1,5 +1,6 @@
 import json
 import math
+import statistics
 import os
 import time
 import random
@@ -16,58 +17,65 @@ from app.models.agent import Agent
 from app.models.resource import Resource
 from app.models.system import System
 from app.utils.constants import *
+import pandas as pd
 
 loaded_systems = []
 
 
-def load_scenario_from_json(system_file_uuids):
+def load_scenario_from_json(directory):
     """
-    Load scenario data from the scenarios directory
+    Load all system scenarios from JSON files in the given directory.
 
-    :param system_file_uuids: uuids of target systems to load
-    :return: systems: the target systems requested
+    :param directory: path to directory containing .json scenario files.
+    :return: List[System] loaded systems.
     """
     systems = []
-    for sys_id in system_file_uuids:
-        if sys_id not in loaded_systems:
-            loaded_systems.append(sys_id)
+    seen_ids = set()
 
-            file_path = os.path.join(JSON_LOAD_PATH, sys_id + ".json")
-            with open(file_path, 'r') as file:
-                data = json.load(file)
+    # Iterate over every .json file in the directory
+    for file_name in os.listdir(directory):
+        if not file_name.lower().endswith('.json'):
+            continue
+        file_path = os.path.join(directory, file_name)
 
-                resources = [
-                    Resource(r["id"], r["value"])
-                    for r in data["resources"]
-                ]
+        with open(file_path, 'r') as f:
+            data = json.load(f)
 
-                agents = [
-                    Agent(a["id"], (a["action_set"]), None)
-                    for a in data["agents"]
-                ]
+        sys_data = data.get("system", {})
+        sys_id = sys_data.get("id")
+        if not sys_id or sys_id in seen_ids:
+            continue
+        seen_ids.add(sys_id)
 
-                # convert agent action set to frozenset of resources
-                for agent in agents:
-                    for i, subset in enumerate(agent.action_set):
-                        agent.action_set[i] = {r for r in resources if r.id in subset}
+        resources = [Resource(r["id"], r["value"]) for r in data.get("resources", [])]
+        id_to_res = {res.id: res for res in resources}
 
-                m = data["system"]["m"]
-                uuid_id = data["system"]["id"]
-                sys = System(resources=resources, agents=agents, m=m, id=uuid_id)
-                sys.optimal_score = data["system"]["optimal_score"]
-                sys.optimal_coverage = data["system"]["optimal_coverage"]
-                sys.feasibility_margin = data["system"]["feasibility_margin"][uuid_id]
-                sys.resource_entropy = data["system"]["resource_entropy"][uuid_id]
-                sys.overlap_density = data["system"]["overlap_density"][uuid_id]
+        agents = [Agent(a["id"], a.get("action_set", []), None) for a in data.get("agents", [])]
 
-                systems.append(sys)
+        for agent in agents:
+            new_sets = []
+            for subset in agent.action_set:
+                # Keep only IDs present in resources
+                valid = {id_to_res[rid] for rid in subset if rid in id_to_res}
+                if valid:
+                    new_sets.append(valid)
+            agent.action_set = new_sets
+
+        m = sys_data.get("m")
+        sys = System(resources, agents, m, sys_id)
+
+        sys.optimal_score = sys_data.get("optimal_score")
+        sys.optimal_coverage = sys_data.get("optimal_coverage")
+        sys.feasibility_margin = sys_data.get("feasibility_margin", {}).get(sys_id)
+        sys.resource_entropy = sys_data.get("resource_entropy", {}).get(sys_id)
+        sys.overlap_density = sys_data.get("overlap_density", {}).get(sys_id)
+        sys.agent_heterogeneity = sys_data.get("agent_heterogeneity", {}).get(sys_id)
+
+        systems.append(sys)
 
     return systems
 
 
-# TODO:: add the metrics here when exporting it to a json
-# TODO:: calculate the optimal system score here as well and export it to json
-# TODO:: will make it must faster when loading in systems, will never callcualte optimal score twice
 def export_scenario_to_json(system=None, file_path="app/out"):
     """
     Export a given random system to json file to be reloaded in future runner.
@@ -101,7 +109,9 @@ def export_scenario_to_json(system=None, file_path="app/out"):
         "optimal_coverage": system.optimal_coverage,
         "feasibility_margin": system.feasibility_margin,
         "overlap_density": system.overlap_density,
-        "resource_entropy": system.resource_entropy
+        "resource_entropy": system.resource_entropy,
+        "agent_heterogeneity": system.agent_heterogeneity,
+        "generation_data": system.generation_data,
     }
 
     simulation_data = {
@@ -313,6 +323,49 @@ def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System S
     plt.close()
 
 
+def plot_normalized_param_average(df, optimal_scores, out_dir='app/out/opt_params'):
+    """
+    For each (distribution, utility) pair in `df`, compute the mean score at each parameter
+    across all systems, normalize by each system’s optimal score, then average across systems
+    and save a single plot of that curve.
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    optimal_series = pd.Series(optimal_scores)  # make a Series for easy division
+
+    # one figure per (distribution, utility)
+    for (dist, util), sub in df.groupby(['distribution', 'utility']):
+        # average score per system & param
+        avg = (
+            sub
+            .groupby(['system_id', 'param_label', 'param_value'])['score']
+            .mean()
+            .reset_index()
+        )
+        # pivot so rows = param_value, cols = system_id
+        pivot = avg.pivot(index='param_value', columns='system_id', values='score')
+
+        # normalize each column by that system’s optimal score
+        pivot_norm = pivot.div(optimal_series, axis=1)
+
+        # average across systems
+        overall = pivot_norm.mean(axis=1)
+
+        xlab = avg['param_label'].iat[0]
+        file_name = f"{util}_{dist}_{xlab}.png"
+        path = os.path.join(out_dir, file_name)
+
+        plt.figure()
+        plt.plot(overall.index, overall.values, marker='o')
+        plt.xlabel(xlab)
+        plt.ylabel('Normalized Average Score')
+        plt.title(f"{util}–{dist}")
+        plt.tight_layout()
+        plt.grid(alpha=0.5)
+        plt.savefig(path)
+        plt.close()
+
+
 def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
     """
     For all parameters, distributions, and utility functions used in a parameter analysis run. Render the scores
@@ -344,6 +397,37 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
             plt.close()
 
 
+def plot_difficulty_scatter(metric_map,  avg_scores, optimal_scores, title, xlabel, out_dir='app/out/sys_scatters'):
+    """
+    Scatter plot of system difficulty vs. normalized average trial score
+    """
+    os.makedirs(out_dir, exist_ok=True)
+
+    x = []
+    y = []
+    for sid, diff in metric_map.items():
+        if sid in avg_scores and sid in optimal_scores and optimal_scores[sid] != 0:
+            x.append(diff)
+            y.append(avg_scores[sid] / optimal_scores[sid])
+
+    plt.figure(figsize=(8, 6))
+
+    plt.scatter(x, y,s=60, edgecolors='black', linewidths=0.8, alpha=0.6, marker='o')
+
+    plt.grid(alpha=0.5)
+    plt.minorticks_on()
+
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel("Normalized System Score", fontsize=12)
+    plt.title(title, fontsize=14, pad=10)
+
+    plt.tight_layout()
+
+    file_name = f"{xlabel.replace(' ', '_')}_vs_norm_score_scatter.png"
+    plt.savefig(os.path.join(out_dir, file_name), dpi=150)
+    plt.close()
+
+
 def plot_optimal_iterations(data, sys_optimal, sys_id):
     """
     For all distribution iterations render the box plot score of the repetitions.
@@ -353,7 +437,6 @@ def plot_optimal_iterations(data, sys_optimal, sys_id):
     :param sys_id: system.id uuid
     :return: None
     """
-    # TODO:: add {sys_uuid}_{iterations}_{distribution}_{utility} for title as well as save file
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     title = "Normalized Scores vs Iterations"
     folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_").lower())
@@ -399,6 +482,33 @@ def format_agent_data(agents):
     return out
 
 
+def compute_agent_action_heterogeneity(agents):
+    """
+    Compute how heterogeneous agents are in their # of actions and the avg size of those actions.
+    Returns a value >=0 where 0 means perfectly uniform.
+    """
+    action_counts = [len(agent.action_set) for agent in agents]
+    avg_action_sizes = []
+
+    for agent in agents:
+        sizes = [len(act) for act in agent.action_set]
+        avg_action_sizes.append(statistics.mean(sizes) if sizes else 0.0)
+
+    if len(action_counts) < 2:
+        return 0.0
+
+    def cv(vals):
+        mew = statistics.mean(vals)
+        theta = statistics.pstdev(vals)
+        return (theta / mew) if mew > 0 else 0.0
+
+    cv_counts = cv(action_counts)
+    cv_sizes = cv(avg_action_sizes)
+
+    # return average of two cv scores
+    return (cv_counts + cv_sizes) / 2
+
+
 def compute_overlap_density(agents, resources):
     """
     Compute the overlap density to quantify system difficulty.
@@ -422,7 +532,7 @@ def compute_overlap_density(agents, resources):
         total_overlap += overlap / len(resources)
         count += 1
 
-    return total_overlap / count
+    return total_overlap / count if count > 0 else 0
 
 
 def compute_agent_resource_entropy(agents, resources):
@@ -481,17 +591,20 @@ def compute_system_difficulties(systems):
     system_difficulties_fm = {}
     system_difficulties_re = {}
     system_difficulties_od = {}
+    system_difficulties_ah = {}
 
     for system in systems:
         system_difficulties_fm[system.id] = [compute_feasibility_margin(system.agents, system.resources, system.M)]
         system_difficulties_re[system.id] = [compute_agent_resource_entropy(system.agents, system.resources)]
         system_difficulties_od[system.id] = [compute_overlap_density(system.agents, system.resources)]
+        system_difficulties_ah[system.id] = [compute_agent_action_heterogeneity(system.agents)]
 
     system_difficulties_fm = dict(sorted(system_difficulties_fm.items(), key=lambda x: x[1], reverse=True))
     system_difficulties_re = dict(sorted(system_difficulties_re.items(), key=lambda x: x[1], reverse=True))
     system_difficulties_od = dict(sorted(system_difficulties_od.items(), key=lambda x: x[1]))
+    system_difficulties_ah = dict(sorted(system_difficulties_ah.items(), key=lambda x: x[1], reverse=True))
 
-    return system_difficulties_fm, system_difficulties_re, system_difficulties_od
+    return system_difficulties_fm, system_difficulties_re, system_difficulties_od, system_difficulties_ah
 
 
 def get_iteration_range(initial_iters, relative_step):
