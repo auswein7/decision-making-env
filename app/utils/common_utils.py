@@ -1,23 +1,23 @@
+import colorsys
 import json
 import math
-import statistics
 import os
-import time
 import random
+import statistics
+import time
 from datetime import datetime
 from itertools import combinations
 
 import matplotlib.pyplot as plt
-from pyvis.network import Network
 import numpy as np
-import colorsys
+import pandas as pd
+from pyvis.network import Network
 
 from app.core.algorithms import function_map
 from app.models.agent import Agent
 from app.models.resource import Resource
 from app.models.system import System
 from app.utils.constants import *
-import pandas as pd
 
 loaded_systems = []
 

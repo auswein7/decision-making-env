@@ -1,15 +1,16 @@
-import uuid
-from app.utils.constants import *
-import networkx as nx
-
-from app.models.agent import Agent
-from app.models.system import System
-from app.models.resource import Resource
-import random
 import math
+import random
+import uuid
+
+import networkx as nx
 import numpy as np
 
+from app.models.agent import Agent
+from app.models.resource import Resource
+from app.models.system import System
 from app.utils.common_utils import export_scenario_to_json, calc_and_time_optimal, compute_system_difficulties
+from app.utils.constants import *
+
 
 def generate_graphs(args):
     funcs = {

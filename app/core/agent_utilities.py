@@ -1,5 +1,7 @@
 from copy import deepcopy
+
 from app.utils.constants import DEFAULT_OPTIMISTIC_ALPHA
+
 
 def marginal_contribution_utility(agent, new_action, coverage_map, M):
     """
