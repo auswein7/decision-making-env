@@ -21,8 +21,9 @@ def generate_graphs(args):
     params = []
     if args.param_sweep:
         params = compute_param_sweep_vals(args)
+        print(f"========Beginning graph generation for {args.graph_type} with the following params: {params}========")
 
-    if not params:
+    if len(params) == 0:
         if args.graph_type == ERDOS_RENYI:
             params = [args.erdos_prob]
         elif args.graph_type == RAND_GEO:
