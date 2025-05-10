@@ -481,6 +481,7 @@ def format_agent_data(agents):
             out[agent.id].append(sub_list)
     return out
 
+# TODO:: add resource value heterogeneity metric!!
 
 def compute_agent_action_heterogeneity(agents):
     """
