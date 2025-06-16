@@ -12,7 +12,7 @@ from app.runner.trial_runner import run_trial
 from app.utils.common_utils import generate_param_analysis_plot, generate_zoomed_analysis_plot, \
     compute_system_difficulties, plot_scores_by_rank, get_iteration_range, plot_optimal_iterations, parse_score_history, \
     calc_and_time_optimal, load_scenario_from_json, init_random_actions, export_scenario_to_json, \
-    plot_normalized_param_average, plot_difficulty_scatter
+    plot_normalized_param_average, plot_difficulty_scatter, estimate_local_minimum
 from app.utils.constants import *
 from app.utils.graph_generator import generate_graphs
 
@@ -40,11 +40,10 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
                 action_set.append(action)
         agents.append(Agent(i, action_set, None))
     sys = System(resources, agents, m, uuid.uuid4().hex)
-
-    sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
     (sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity, sys.agent_heterogeneity,
      sys.action_combinations) = compute_system_difficulties(systems=[sys])
-    sys.local_minima = -1  # will get reset when running simulation
+    sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+    sys.local_minima = estimate_local_minimum(system=sys)
     sys.generation_data = {"method": "random_gen"}
     return sys
 

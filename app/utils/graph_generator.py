@@ -8,7 +8,7 @@ import numpy as np
 from app.models.agent import Agent
 from app.models.resource import Resource
 from app.models.system import System
-from app.utils.common_utils import export_scenario_to_json, calc_and_time_optimal, compute_system_difficulties
+from app.utils.common_utils import estimate_local_minimum, export_scenario_to_json, calc_and_time_optimal, compute_system_difficulties
 from app.utils.constants import *
 
 
@@ -37,12 +37,12 @@ def generate_graphs(args):
     for param in params:
         systems = funcs[args.graph_type](args, param)
         for sys in systems:
-            sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
             (sys.feasibility_margin, sys.resource_entropy, sys.overlap_density,
              sys.agent_heterogeneity, sys.resource_heterogeneity, sys.action_combinations) = (
                 compute_system_difficulties(systems=[sys]))
             sys.generation_data = {"method": "graph", "graph_type": args.graph_type, "param": param}
-            sys.local_minima = -1 # will get reset when running simulation
+            sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
+            sys.local_minima = estimate_local_minimum(system=sys)
             filter_unreachable_resources(system=sys)
             export_scenario_to_json(system=sys)
 

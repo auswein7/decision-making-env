@@ -3,16 +3,19 @@ import json
 import math
 import os
 import random
+import csv
 import statistics
 import time
+from copy import deepcopy
 from datetime import datetime
-from itertools import combinations, product
+from itertools import combinations
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pyvis.network import Network
 
+from app.runner.trial_runner import run_trial
 from app.core.algorithms import function_map
 from app.models.agent import Agent
 from app.models.resource import Resource
@@ -73,6 +76,7 @@ def load_scenario_from_json(directory):
         sys.resource_heterogeneity = sys_data.get("resource_heterogeneity", {}).get(sys_id)
         sys.action_combinations = sys_data.get("action_combinations", {}).get(sys_id)
         sys.local_minima = sys_data.get("local_minima", {})
+        sys.generation_data = sys_data.get("generation_data", {})
 
         systems.append(sys)
 
@@ -264,6 +268,10 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
         folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
         os.makedirs(folder_path, exist_ok=True)
 
+        fallback_scores = load_best_observed_scores_from_log()
+        if sys_optimal == -1 and fallback_scores is not None:
+            sys_optimal = fallback_scores.get(sys_id, 1)
+
         normalized_scores = [np.array(scores) / sys_optimal for scores in values['scores']]
 
         plt.figure(figsize=(8, 5))
@@ -306,6 +314,12 @@ def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System S
         scores = values[1:]
 
         opt = sys_opts[system_id]
+
+        # add due to change of not always calculating optimal sys scores
+        fallback_scores = load_best_observed_scores_from_log()
+        if opt == -1 and fallback_scores is not None:
+            opt = fallback_scores.get(system_id, 1)
+
         if opt != 0:
             scores = [s / opt for s in scores]
         else:
@@ -337,7 +351,18 @@ def plot_normalized_param_average(df, optimal_scores, out_dir='app/out/opt_param
     """
     os.makedirs(out_dir, exist_ok=True)
 
-    optimal_series = pd.Series(optimal_scores)  # make a Series for easy division
+    fallback_scores = load_best_observed_scores_from_log()
+    # Start with the original optimal scores
+    patched_scores = {}
+    for sys_id, opt in optimal_scores.items():
+        if opt != -1 and opt > 0:
+            patched_scores[sys_id] = opt
+        elif fallback_scores and sys_id in fallback_scores and fallback_scores[sys_id] > 0:
+            patched_scores[sys_id] = fallback_scores[sys_id]
+        else:
+            patched_scores[sys_id] = 1  # Avoid division by zero
+
+    optimal_series = pd.Series(patched_scores)
 
     # one figure per (distribution, utility)
     for (dist, util), sub in df.groupby(['distribution', 'utility']):
@@ -388,6 +413,11 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
         os.makedirs(folder_path, exist_ok=True)
 
         for param_value, scores in zip(values['x'], values['scores']):
+
+            fallback_scores = load_best_observed_scores_from_log()
+            if sys_optimal == -1 and fallback_scores is not None:
+                sys_optimal = fallback_scores.get(sys_id, 1)
+
             normalized_scores = np.array(scores) / sys_optimal
 
             plt.figure(figsize=(8, 5))
@@ -403,7 +433,7 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
             plt.close()
 
 
-def plot_difficulty_scatter(metric_map,  avg_scores, optimal_scores, title, xlabel, out_dir='app/out/sys_scatters'):
+def plot_difficulty_scatter(metric_map, avg_scores, optimal_scores, title, xlabel, out_dir='app/out/sys_scatters'):
     """
     Scatter plot of system difficulty vs. normalized average trial score
     """
@@ -413,12 +443,18 @@ def plot_difficulty_scatter(metric_map,  avg_scores, optimal_scores, title, xlab
     y = []
     for sid, diff in metric_map.items():
         if sid in avg_scores and sid in optimal_scores and optimal_scores[sid] != 0:
+
+            sys_optimal = optimal_scores[sid]
+            fallback_scores = load_best_observed_scores_from_log()
+            if sys_optimal == -1 and fallback_scores is not None:
+                sys_optimal = fallback_scores.get(sid, 1)
+
             x.append(diff)
-            y.append(avg_scores[sid] / optimal_scores[sid])
+            y.append(avg_scores[sid] / sys_optimal)
 
     plt.figure(figsize=(8, 6))
 
-    plt.scatter(x, y,s=60, edgecolors='black', linewidths=0.8, alpha=0.6, marker='o')
+    plt.scatter(x, y, s=60, edgecolors='black', linewidths=0.8, alpha=0.6, marker='o')
 
     plt.grid(alpha=0.5)
     plt.minorticks_on()
@@ -451,6 +487,10 @@ def plot_optimal_iterations(data, sys_optimal, sys_id):
     sorted_items = sorted(data.items())
     x_labels = [str(k) for k, _ in sorted_items]
 
+    fallback_scores = load_best_observed_scores_from_log()
+    if sys_optimal == -1 and fallback_scores is not None:
+        sys_optimal = fallback_scores.get(sys_id, 1)
+
     box_data = []
     for _, scores in sorted_items:
         norm_scores = [s / sys_optimal for s in scores]
@@ -471,6 +511,21 @@ def plot_optimal_iterations(data, sys_optimal, sys_id):
     plt.close()
 
 
+def load_best_observed_scores_from_log(csv_path="app/out/system_trials.csv"):
+    """
+    Load the highest observed system score from trials log.
+    Returns: dict mapping system_id -> highest observed score
+    """
+    df = pd.read_csv(csv_path)
+
+    # Only keep meaningful scores
+    df = df[df["observed_optimal"] > 0]
+
+    # Group by system and find max
+    best_scores = df.groupby("system_id")["observed_optimal"].max().to_dict()
+    return best_scores
+
+
 def format_agent_data(agents):
     """
     Convert agent action sets, and resource id within actions to parsable structure.
@@ -486,6 +541,7 @@ def format_agent_data(agents):
                 sub_list.append((resource.id, resource.value))
             out[agent.id].append(sub_list)
     return out
+
 
 def compute_resource_value_heterogeneity(resources):
     """
@@ -505,6 +561,7 @@ def compute_resource_value_heterogeneity(resources):
 
     return std / mean if mean > 0 else 0.0
 
+
 def compute_action_combinations(agents):
     """
     Compute how many unique agent action allocations the system has.
@@ -516,6 +573,7 @@ def compute_action_combinations(agents):
     for agent in agents:
         count *= len(agent.action_set) if agent.action_set else 1
     return count
+
 
 def compute_agent_action_heterogeneity(agents):
     """
@@ -648,7 +706,6 @@ def compute_system_difficulties(systems):
     )
 
 
-
 def get_iteration_range(initial_iters, relative_step):
     """
     Compute 4 values left of iterations, 5 values right of iterations, with a 10% step size
@@ -734,3 +791,74 @@ def calculate_system_convergence(score_history, curr_sys):
     if score_sim_count >= len(score_history):
         return True
     return False
+
+
+def estimate_local_minimum(system, num_iterations=6000):
+    """
+    Run one ABR and one Logit response trial to estimate a local minimum score.
+    """
+    local_min_scores = []
+
+    for dist_name, param in [
+        ("approximate_best_response", 1.0),
+        ("logit_response", 0.000001)
+    ]:
+        score, _ = run_trial(
+            system=deepcopy(system),
+            distribution=dist_name,
+            agent_util="marginal_contribution",
+            max_iterations=num_iterations,
+            beta=param,
+            temperature=param,
+            data_collector=None,
+            trial_num=0,
+            conv_iter=float("inf"),
+            data_key="",
+            computing_minima=True
+        )
+        local_min_scores.append(score)
+
+    return min(local_min_scores)
+
+
+def log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num):
+    output_path = JSON_SAVE_PATH + "/system_trials.csv"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    local_min = system.local_minima
+    param = beta if distribution == APPROX_BEST_RESPONSE else temperature
+
+    graph_type = "N/A"
+    graph_param = "N/A"
+    generation_method = system.generation_data.get("method")
+    if generation_method == "graph":
+        graph_type = system.generation_data.get("graph_type") if system.generation_data else None
+        graph_param = system.generation_data.get("param") if system.generation_data else None
+
+    with open(output_path, "a", newline="") as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=[
+            "system_id", "local_minima", "observed_optimal", "distribution",
+            "param_value", "gap_to_local_min", "system_generation_type", "graph_type",
+            "graph_param", "trial_num", "timestamp"
+        ])
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        try:
+            print(f"Writing trial log to: {os.path.abspath(output_path)}")
+            writer.writerow({
+                "system_id": system.id,
+                "local_minima": local_min,
+                "observed_optimal": score,
+                "distribution": distribution,
+                "param_value": param,
+                "gap_to_local_min": (score - local_min) if (score is not None and local_min is not None) else None,
+                "system_generation_type": generation_method,
+                "graph_type": graph_type,
+                "graph_param": graph_param,
+                "trial_num": trial_num,
+                "timestamp": datetime.now().isoformat()
+            })
+        except Exception as e:
+            print(f"ERROR while writing to CSV: {e}")

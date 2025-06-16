@@ -3,7 +3,6 @@ from copy import deepcopy
 
 from app.core.agent_utilities import marginal_contribution_utility, equal_share_utility, optimistic_utility
 from app.core.distributions import Distribution
-from app.utils.common_utils import calculate_system_convergence
 from app.utils.constants import *
 
 UTILITY_FUNCS = {
@@ -14,7 +13,8 @@ UTILITY_FUNCS = {
 
 def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, beta=0.5, temperature=1,
               data_collector=None, trial_num=0,
-              conv_iter=float("inf"), data_key=""):
+              conv_iter=float("inf"), data_key="", computing_minima=False):
+    from app.utils.common_utils import calculate_system_convergence, log_trial_to_dataset
     """Conduct a single trial using the given system, distribution, and utility function."""
     func_args = {k: v for k, v in locals().items() if k not in EXCLUDE_KEYS}
     print(
@@ -67,4 +67,13 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
         if iteration % 1000 == 0:
             print(f"Iteration {iteration}: System Score = {system.score}")
 
-    return sum(system_scores[-int(len(system_scores) * 0.2):]) / int(len(system_scores) * 0.2), func_args
+    if system_scores:
+        k = max(1, int(len(system_scores) * 0.2))
+        score = sum(system_scores[-k:]) / k
+    else:
+        score = float('nan')
+
+    if not computing_minima:
+        log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num)
+
+    return score, func_args
