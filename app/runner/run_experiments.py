@@ -263,12 +263,12 @@ def parameter_analysis_runner(args, b=None, temp=None):
             init_random_actions(system=system)
 
         param_score_history = {
-            f"{utility},{BETA},{beta:.3f}": []
+            (utility, BETA, float(beta)): []
             for utility in args.utility.split(",")
             for beta in beta_vals
         }
         param_score_history.update({
-            f"{utility},{TEMP},{t:.3f}": []
+            (utility, TEMP, float(t)): []
             for utility in args.utility.split(",")
             for t in temperature_vals
         })
@@ -298,7 +298,7 @@ def parameter_analysis_runner(args, b=None, temp=None):
                                                      agent_util=utility, data_key=key,
                                                      distribution=distribution)
 
-                        param_score_history[f"{utility},{param_label},{param:.3f}"].append(score)
+                        param_score_history[(utility, param_label, float(param))].append(score)
                         data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
 
                         # record for optimal param values plot

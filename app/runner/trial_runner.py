@@ -60,7 +60,7 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
                 print(
                     f"\n{distribution} system converged on iteration {iteration} with a final system score of {system.score}.\n"
                     f"Simulation score stable for {conv_iter} iterations.\n")
-                return system.score
+                return system.score, func_args
 
         system_scores.append(system.score)
 

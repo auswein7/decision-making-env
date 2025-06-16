@@ -276,7 +276,7 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
 
         plt.figure(figsize=(8, 5))
         plt.boxplot(normalized_scores, vert=True, patch_artist=True, boxprops=dict(facecolor="lightblue"))
-        plt.xticks(ticks=range(1, len(values['x']) + 1), labels=values['x'])
+        plt.xticks(ticks=range(1, len(values['x']) + 1), labels=[f"{x:.4f}" for x in values['x']])
 
         plt.ylim(0, 1)
         plt.xlabel(f"{var_name}", fontsize=8)
@@ -387,7 +387,7 @@ def plot_normalized_param_average(df, optimal_scores, out_dir='app/out/opt_param
         path = os.path.join(out_dir, file_name)
 
         plt.figure()
-        plt.plot(overall.index, overall.values, marker='o')
+        plt.plot(overall.index.round(4), overall.values, marker='o')
         plt.xlabel(xlab)
         plt.ylabel('Normalized Average Score')
         plt.title(f"{util}–{dist}")
@@ -425,10 +425,10 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
             plt.plot(range(len(normalized_scores)), normalized_scores, marker='o', color="blue")
             plt.xlabel('Repetition', fontsize=8)
             plt.ylabel('Norm Score', fontsize=8)
-            plt.title(f'{var_name}:{param_value} with {utility}', fontsize=10)
+            plt.title(f'{var_name}:{param_value:.4f} with {utility}', fontsize=10)
             plt.grid(alpha=0.5)
 
-            filename = os.path.join(folder_path, f"{sys_id}_{param_value}_{timestamp}.png")
+            filename = os.path.join(folder_path, f"{sys_id}_{param_value:.4f}_{timestamp}.png")
             plt.savefig(filename, dpi=300)
             plt.close()
 
@@ -721,26 +721,19 @@ def get_iteration_range(initial_iters, relative_step):
 
 
 def parse_score_history(score_history):
-    """
-    Format data for parameter analysis run plotting.
-
-    :param score_history: full history over repetitions in a run.
-    :return: formateed plotting data
-    """
     parsed_data = {}
 
-    for data_key, scores in score_history.items():
-        for param_type in [BETA, TEMP]:
-            if param_type in data_key:
-                utility = data_key.split(param_type)[0][:-1]
-                param_value = float(data_key.replace(utility, '').replace(param_type, '').replace(',', ''))
+    for (utility, param_label, param_value), scores in score_history.items():
+        if not scores:
+            print(f"[WARN] Skipping empty score list for {utility}, {param_label}, {param_value}")
+            continue
 
-                if (utility, param_type) not in parsed_data:
-                    parsed_data[(utility, param_type)] = {'x': [], 'y': [], 'scores': []}
+        if (utility, param_label) not in parsed_data:
+            parsed_data[(utility, param_label)] = {'x': [], 'y': [], 'scores': []}
 
-                parsed_data[(utility, param_type)]['x'].append(param_value)
-                parsed_data[(utility, param_type)]['y'].append(np.mean(scores))
-                parsed_data[(utility, param_type)]['scores'].append(scores)
+        parsed_data[(utility, param_label)]['x'].append(param_value)
+        parsed_data[(utility, param_label)]['y'].append(np.mean(scores))
+        parsed_data[(utility, param_label)]['scores'].append(scores)
 
     return parsed_data
 
