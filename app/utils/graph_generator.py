@@ -38,14 +38,18 @@ def generate_graphs(args):
         systems = funcs[args.graph_type](args, param)
         for sys in systems:
             sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
-            sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity = compute_system_difficulties(systems=[sys])
+            (sys.feasibility_margin, sys.resource_entropy, sys.overlap_density,
+             sys.agent_heterogeneity, sys.resource_heterogeneity, sys.action_combinations) = (
+                compute_system_difficulties(systems=[sys]))
             sys.generation_data = {"method": "graph", "graph_type": args.graph_type, "param": param}
+            sys.local_minima = -1 # will get reset when running simulation
             filter_unreachable_resources(system=sys)
             export_scenario_to_json(system=sys)
 
+
 def compute_param_sweep_vals(args):
     if args.graph_type == ERDOS_RENYI:
-        erdos_probs = np.arange(args.erdos_prob, MAX_ERDOS_PROB + 0.05/2, 0.05)
+        erdos_probs = np.arange(args.erdos_prob, MAX_ERDOS_PROB + 0.05 / 2, 0.05)
         return erdos_probs
     if args.graph_type == RAND_GEO:
         geo_radii = np.arange(args.geo_radius, MAX_GEO_RADIUS + 0.05 / 2, 0.05)
@@ -53,7 +57,8 @@ def compute_param_sweep_vals(args):
     if args.graph_type == WATTS_STROGATZ:
         ws_beta_vals = np.arange(args.ws_beta, MAX_WS_BETA + 0.05 / 2, 0.05)
         return ws_beta_vals
-        
+
+
 def filter_unreachable_resources(system):
     reachable = set()
     for agent in system.agents:
@@ -64,6 +69,7 @@ def filter_unreachable_resources(system):
         res for res in system.resources
         if res in reachable
     ]
+
 
 def generate_erdos_renyi_systems(args, erdos_prob):
     systems = []

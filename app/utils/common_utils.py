@@ -6,7 +6,7 @@ import random
 import statistics
 import time
 from datetime import datetime
-from itertools import combinations
+from itertools import combinations, product
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -70,6 +70,9 @@ def load_scenario_from_json(directory):
         sys.resource_entropy = sys_data.get("resource_entropy", {}).get(sys_id)
         sys.overlap_density = sys_data.get("overlap_density", {}).get(sys_id)
         sys.agent_heterogeneity = sys_data.get("agent_heterogeneity", {}).get(sys_id)
+        sys.resource_heterogeneity = sys_data.get("resource_heterogeneity", {}).get(sys_id)
+        sys.action_combinations = sys_data.get("action_combinations", {}).get(sys_id)
+        sys.local_minima = sys_data.get("local_minima", {})
 
         systems.append(sys)
 
@@ -111,6 +114,9 @@ def export_scenario_to_json(system=None, file_path="app/out"):
         "overlap_density": system.overlap_density,
         "resource_entropy": system.resource_entropy,
         "agent_heterogeneity": system.agent_heterogeneity,
+        "resource_heterogeneity": system.resource_heterogeneity,
+        "action_combinations": system.action_combinations,
+        "local_minima": system.local_minima,
         "generation_data": system.generation_data,
     }
 
@@ -481,7 +487,35 @@ def format_agent_data(agents):
             out[agent.id].append(sub_list)
     return out
 
-# TODO:: add resource value heterogeneity metric!!
+def compute_resource_value_heterogeneity(resources):
+    """
+    Compute the coefficient of variation (CV) in resource values.
+    A value of 0 means all resources have the same value.
+
+    :param resources: system resources
+    :return: float indicating dispersion in resource values
+    """
+    values = [r.value for r in resources]
+
+    if len(values) < 2:
+        return 0.0
+
+    mean = statistics.mean(values)
+    std = statistics.pstdev(values)
+
+    return std / mean if mean > 0 else 0.0
+
+def compute_action_combinations(agents):
+    """
+    Compute how many unique agent action allocations the system has.
+
+    :param agents: system agents
+    :return: int number of unique agent action allocations
+    """
+    count = 1
+    for agent in agents:
+        count *= len(agent.action_set) if agent.action_set else 1
+    return count
 
 def compute_agent_action_heterogeneity(agents):
     """
@@ -584,28 +618,35 @@ def compute_feasibility_margin(agents, resources, M):
 
 def compute_system_difficulties(systems):
     """
-    Compute difficulties for system across all three metrics.
+    Compute difficulties for system across all metrics.
 
-    :param systems: created systems for system analysis run
-    :return: three dictionaries of system difficulties
+    :param systems: list of systems
+    :return: dictionaries of system difficulties
     """
     system_difficulties_fm = {}
     system_difficulties_re = {}
     system_difficulties_od = {}
     system_difficulties_ah = {}
+    system_difficulties_rh = {}
+    system_difficulties_ac = {}
 
     for system in systems:
         system_difficulties_fm[system.id] = [compute_feasibility_margin(system.agents, system.resources, system.M)]
         system_difficulties_re[system.id] = [compute_agent_resource_entropy(system.agents, system.resources)]
         system_difficulties_od[system.id] = [compute_overlap_density(system.agents, system.resources)]
         system_difficulties_ah[system.id] = [compute_agent_action_heterogeneity(system.agents)]
+        system_difficulties_rh[system.id] = [compute_resource_value_heterogeneity(system.resources)]
+        system_difficulties_ac[system.id] = [compute_action_combinations(system.agents)]
 
-    system_difficulties_fm = dict(sorted(system_difficulties_fm.items(), key=lambda x: x[1], reverse=True))
-    system_difficulties_re = dict(sorted(system_difficulties_re.items(), key=lambda x: x[1], reverse=True))
-    system_difficulties_od = dict(sorted(system_difficulties_od.items(), key=lambda x: x[1]))
-    system_difficulties_ah = dict(sorted(system_difficulties_ah.items(), key=lambda x: x[1], reverse=True))
+    return (
+        dict(sorted(system_difficulties_fm.items(), key=lambda x: x[1], reverse=True)),
+        dict(sorted(system_difficulties_re.items(), key=lambda x: x[1], reverse=True)),
+        dict(sorted(system_difficulties_od.items(), key=lambda x: x[1])),
+        dict(sorted(system_difficulties_ah.items(), key=lambda x: x[1], reverse=True)),
+        dict(sorted(system_difficulties_rh.items(), key=lambda x: x[1], reverse=True)),
+        dict(sorted(system_difficulties_ac.items(), key=lambda x: x[1], reverse=True)),
+    )
 
-    return system_difficulties_fm, system_difficulties_re, system_difficulties_od, system_difficulties_ah
 
 
 def get_iteration_range(initial_iters, relative_step):

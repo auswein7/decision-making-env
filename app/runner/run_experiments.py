@@ -42,8 +42,9 @@ def generate_problem_instance(num_resources, num_agents, action_size_range,
     sys = System(resources, agents, m, uuid.uuid4().hex)
 
     sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
-    sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity = compute_system_difficulties(
-        systems=[sys])
+    (sys.feasibility_margin, sys.resource_entropy, sys.overlap_density, sys.agent_heterogeneity, sys.agent_heterogeneity,
+     sys.action_combinations) = compute_system_difficulties(systems=[sys])
+    sys.local_minima = -1  # will get reset when running simulation
     sys.generation_data = {"method": "random_gen"}
     return sys
 
@@ -137,12 +138,14 @@ def system_analysis_runner(args):
             for _ in range(args.num_systems)
         ]
 
-    fm_rank, re_rank, od_rank, ah_rank = compute_system_difficulties(systems)
+    fm_rank, re_rank, od_rank, ah_rank, rh_rank, ac_rank = compute_system_difficulties(systems)
 
     fm_vals = {sid: vals[0] for sid, vals in fm_rank.items()}
     re_vals = {sid: vals[0] for sid, vals in re_rank.items()}
     od_vals = {sid: vals[0] for sid, vals in od_rank.items()}
     ah_vals = {sid: vals[0] for sid, vals in ah_rank.items()}
+    rh_vals = {sid: vals[0] for sid, vals in rh_rank.items()}
+    ac_vals = {sid: vals[0] for sid, vals in ac_rank.items()}
 
     # collect trial scores per system
     scores_by_system = {sid: [] for sid in fm_vals}
@@ -185,6 +188,8 @@ def system_analysis_runner(args):
             re_rank[system.id].append(score)
             od_rank[system.id].append(score)
             ah_rank[system.id].append(score)
+            rh_rank[system.id].append(score)
+            ac_rank[system.id].append(score)
 
             scores_by_system[system.id].append(score)
 
@@ -194,6 +199,8 @@ def system_analysis_runner(args):
     plot_scores_by_rank(data=re_rank, title="Resource Entropy Run Data", x_label="RE rank", sys_opts=sys_opts)
     plot_scores_by_rank(data=od_rank, title="Overlap Density Run Data", x_label="OD rank", sys_opts=sys_opts)
     plot_scores_by_rank(data=ah_rank, title="Agent Heterogeneity Run Data", x_label="AH rank", sys_opts=sys_opts)
+    plot_scores_by_rank(data=rh_rank, title="Resource Heterogeneity Run Data", x_label="RH rank", sys_opts=sys_opts)
+    plot_scores_by_rank(data=ac_rank, title="Action Count Run Data", x_label="AC rank", sys_opts=sys_opts)
 
     avg_scores = {
         sid: (sum(lst) / len(lst)) if lst else 0.0
@@ -208,6 +215,10 @@ def system_analysis_runner(args):
                             xlabel="Overlap Density")
     plot_difficulty_scatter(ah_vals, avg_scores, sys_opts, title="Agent Heterogeneity vs Avg Score",
                             xlabel="Agent Heterogeneity")
+    plot_difficulty_scatter(rh_vals, avg_scores, sys_opts, title="Resource Heterogeneity vs Avg Score",
+                            xlabel="Resource Heterogeneity")
+    plot_difficulty_scatter(ac_vals, avg_scores, sys_opts, title="Action Counts vs Avg Score",
+                            xlabel="Action Counts")
 
 
 def parameter_analysis_runner(args, b=None, temp=None):

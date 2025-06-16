@@ -22,9 +22,12 @@ class System:
         self.optimal_coverage = None
         self.feasibility_margin = None
         self.agent_heterogeneity = None
+        self.resource_heterogeneity = None
         self.resource_entropy = None
         self.overlap_density = None
+        self.action_combinations = None
         self.generation_data = None
+        self.local_minima = None
 
     def system_score(self):
         """
