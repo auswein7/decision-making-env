@@ -47,7 +47,7 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
             for action in candidates
         }
 
-        best_action = prob_dist.get_distribution()(action_scores)
+        best_action, _ = prob_dist.get_distribution()(action_scores)
         agent.current_action = set(best_action)
 
         system.system_score()
