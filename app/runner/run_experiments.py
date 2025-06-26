@@ -90,7 +90,7 @@ def optimal_iteration_runner(args):
     for sys in system:
         save_file = export_scenario_to_json(sys, JSON_SAVE_PATH) if not args.load_from_config else sys.id
         optimal_score = sys.optimal_score
-        print(f"-------- System (ID={system.id[:6]}) optimal score: {optimal_score} --------")
+        print(f"-------- System (ID={sys.id[:6]}) optimal score: {optimal_score} --------")
         if args.init_from_random:
             init_random_actions(system=sys)
 
@@ -105,7 +105,7 @@ def optimal_iteration_runner(args):
                                              data_collector=data_collector, trial_num=iter_range,
                                              conv_iter=args.system_convergence_iter,
                                              agent_util=args.utility, data_key=key,
-                                             distribution=args.distribution)
+                                             distribution=args.distribution, output_dir=args.output_dir)
 
                 data_collector.summarize_results(save_file, {key: func_args}, avg_score=score,
                                                  optimal_score=optimal_score)
@@ -114,7 +114,7 @@ def optimal_iteration_runner(args):
                 else:
                     iter_data[iter_range] = [score]
 
-        plot_optimal_iterations(data=iter_data, sys_optimal=optimal_score, sys_id=sys.id)
+        plot_optimal_iterations(data=iter_data, sys_optimal=optimal_score, sys_id=sys.id, output_dir=args.output_dir)
 
 
 def system_analysis_runner(args):
@@ -137,14 +137,12 @@ def system_analysis_runner(args):
             for _ in range(args.num_systems)
         ]
 
-    fm_rank, re_rank, od_rank, ah_rank, rh_rank, ac_rank = compute_system_difficulties(systems)
-
-    fm_vals = {sid: vals[0] for sid, vals in fm_rank.items()}
-    re_vals = {sid: vals[0] for sid, vals in re_rank.items()}
-    od_vals = {sid: vals[0] for sid, vals in od_rank.items()}
-    ah_vals = {sid: vals[0] for sid, vals in ah_rank.items()}
-    rh_vals = {sid: vals[0] for sid, vals in rh_rank.items()}
-    ac_vals = {sid: vals[0] for sid, vals in ac_rank.items()}
+    fm_vals = {sys.id: sys.feasibility_margin for sys in systems}
+    re_vals = {sys.id: sys.resource_entropy for sys in systems}
+    od_vals = {sys.id: sys.overlap_density for sys in systems}
+    ah_vals = {sys.id: sys.agent_heterogeneity for sys in systems}
+    rh_vals = {sys.id: sys.resource_heterogeneity for sys in systems}
+    ac_vals = {sys.id: sys.action_combinations for sys in systems}
 
     # collect trial scores per system
     scores_by_system = {sid: [] for sid in fm_vals}
@@ -179,27 +177,13 @@ def system_analysis_runner(args):
                 data_collector=data_collector,
                 trial_num=idx,
                 conv_iter=args.system_convergence_iter,
-                data_key=key
+                data_key=key,
+                output_dir=args.output_dir
             )
-
-            # Append to each metric for box-plots
-            fm_rank[system.id].append(score)
-            re_rank[system.id].append(score)
-            od_rank[system.id].append(score)
-            ah_rank[system.id].append(score)
-            rh_rank[system.id].append(score)
-            ac_rank[system.id].append(score)
 
             scores_by_system[system.id].append(score)
 
             data_collector.summarize_results(save_file, {key: func_args}, avg_score=score, optimal_score=optimal_score)
-
-    plot_scores_by_rank(data=fm_rank, title="Feasibility Margin Run Data", x_label="FM rank", sys_opts=sys_opts)
-    plot_scores_by_rank(data=re_rank, title="Resource Entropy Run Data", x_label="RE rank", sys_opts=sys_opts)
-    plot_scores_by_rank(data=od_rank, title="Overlap Density Run Data", x_label="OD rank", sys_opts=sys_opts)
-    plot_scores_by_rank(data=ah_rank, title="Agent Heterogeneity Run Data", x_label="AH rank", sys_opts=sys_opts)
-    plot_scores_by_rank(data=rh_rank, title="Resource Heterogeneity Run Data", x_label="RH rank", sys_opts=sys_opts)
-    plot_scores_by_rank(data=ac_rank, title="Action Count Run Data", x_label="AC rank", sys_opts=sys_opts)
 
     avg_scores = {
         sid: (sum(lst) / len(lst)) if lst else 0.0
@@ -207,17 +191,17 @@ def system_analysis_runner(args):
     }
 
     plot_difficulty_scatter(fm_vals, avg_scores, sys_opts, title="Feasibility Margin vs Avg Score",
-                            xlabel="Feasibility Margin")
+                            xlabel="Feasibility Margin", out_dir=args.output_dir)
     plot_difficulty_scatter(re_vals, avg_scores, sys_opts, title="Resource Entropy vs Avg Score",
-                            xlabel="Resource Entropy")
+                            xlabel="Resource Entropy", out_dir=args.output_dir)
     plot_difficulty_scatter(od_vals, avg_scores, sys_opts, title="Overlap Density vs Avg Score",
-                            xlabel="Overlap Density")
+                            xlabel="Overlap Density", out_dir=args.output_dir)
     plot_difficulty_scatter(ah_vals, avg_scores, sys_opts, title="Agent Heterogeneity vs Avg Score",
-                            xlabel="Agent Heterogeneity")
+                            xlabel="Agent Heterogeneity", out_dir=args.output_dir)
     plot_difficulty_scatter(rh_vals, avg_scores, sys_opts, title="Resource Heterogeneity vs Avg Score",
-                            xlabel="Resource Heterogeneity")
+                            xlabel="Resource Heterogeneity", out_dir=args.output_dir)
     plot_difficulty_scatter(ac_vals, avg_scores, sys_opts, title="Action Counts vs Avg Score",
-                            xlabel="Action Counts")
+                            xlabel="Action Counts", out_dir=args.output_dir)
 
 
 def parameter_analysis_runner(args, b=None, temp=None):
@@ -296,7 +280,7 @@ def parameter_analysis_runner(args, b=None, temp=None):
                                                      data_collector=data_collector, trial_num=trial,
                                                      conv_iter=args.system_convergence_iter,
                                                      agent_util=utility, data_key=key,
-                                                     distribution=distribution)
+                                                     distribution=distribution, output_dir=args.output_dir)
 
                         param_score_history[(utility, param_label, float(param))].append(score)
                         data_collector.summarize_results(save_file, {key: func_args}, optimal_score, score)
@@ -314,8 +298,8 @@ def parameter_analysis_runner(args, b=None, temp=None):
                         })
 
         run_data = parse_score_history(param_score_history)
-        generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
-        generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id)
+        generate_param_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id, output_dir=args.output_dir)
+        generate_zoomed_analysis_plot(data=run_data, sys_optimal=optimal_score, sys_id=system.id, output_dir=args.output_dir)
 
     # generate plot of optimal temp and beta values
-    plot_normalized_param_average(pd.DataFrame(records), optimal_scores=opt_scores)
+    plot_normalized_param_average(pd.DataFrame(records), optimal_scores=opt_scores, out_dir=args.output_dir)

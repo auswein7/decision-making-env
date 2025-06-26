@@ -82,7 +82,6 @@ def load_scenario_from_json(directory):
 
     return systems
 
-
 def export_scenario_to_json(system=None, file_path="app/out"):
     """
     Export a given random system to json file to be reloaded in future runner.
@@ -253,7 +252,7 @@ def generate_system_html(system, uuid_str, output_dir):
         f.write(html)
 
 
-def generate_param_analysis_plot(data, sys_optimal, sys_id):
+def generate_param_analysis_plot(data, sys_optimal, sys_id, output_dir="app/out"):
     """
     For all parameters, distributions, and utility functions used in a parameter analysis run. Render a box plot of the
     scores over all repetitions.
@@ -265,10 +264,10 @@ def generate_param_analysis_plot(data, sys_optimal, sys_id):
     """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     for (utility, var_name), values in data.items():
-        folder_path = os.path.join(JSON_SAVE_PATH, f"{utility}-{var_name}-whisker")
+        folder_path = os.path.join(output_dir, f"{utility}-{var_name}-whisker")
         os.makedirs(folder_path, exist_ok=True)
 
-        fallback_scores = load_best_observed_scores_from_log()
+        fallback_scores = load_best_observed_scores_from_log(csv_path=output_dir+"/system_trials.csv")
         if sys_optimal == -1 and fallback_scores is not None:
             sys_optimal = fallback_scores.get(sys_id, 1)
 
@@ -343,15 +342,15 @@ def plot_scores_by_rank(data, title='', x_label='', y_label='Normalized System S
     plt.close()
 
 
-def plot_normalized_param_average(df, optimal_scores, out_dir='app/out/opt_params'):
+def plot_normalized_param_average(df, optimal_scores, out_dir='app/out'):
     """
     For each (distribution, utility) pair in `df`, compute the mean score at each parameter
     across all systems, normalize by each system’s optimal score, then average across systems
     and save a single plot of that curve.
     """
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(out_dir+"/opt_params", exist_ok=True)
 
-    fallback_scores = load_best_observed_scores_from_log()
+    fallback_scores = load_best_observed_scores_from_log(csv_path=out_dir+"/system_trials.csv")
     # Start with the original optimal scores
     patched_scores = {}
     for sys_id, opt in optimal_scores.items():
@@ -397,7 +396,7 @@ def plot_normalized_param_average(df, optimal_scores, out_dir='app/out/opt_param
         plt.close()
 
 
-def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
+def generate_zoomed_analysis_plot(data, sys_optimal, sys_id, output_dir="app/out"):
     """
     For all parameters, distributions, and utility functions used in a parameter analysis run. Render the scores
     attained during repetitions.
@@ -414,7 +413,7 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
 
         for param_value, scores in zip(values['x'], values['scores']):
 
-            fallback_scores = load_best_observed_scores_from_log()
+            fallback_scores = load_best_observed_scores_from_log(csv_path=output_dir+"/system_trials.csv")
             if sys_optimal == -1 and fallback_scores is not None:
                 sys_optimal = fallback_scores.get(sys_id, 1)
 
@@ -433,11 +432,11 @@ def generate_zoomed_analysis_plot(data, sys_optimal, sys_id):
             plt.close()
 
 
-def plot_difficulty_scatter(metric_map, avg_scores, optimal_scores, title, xlabel, out_dir='app/out/sys_scatters'):
+def plot_difficulty_scatter(metric_map, avg_scores, optimal_scores, title, xlabel, out_dir='app/out/'):
     """
     Scatter plot of system difficulty vs. normalized average trial score
     """
-    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(out_dir+"/sys_scatters", exist_ok=True)
 
     x = []
     y = []
@@ -445,7 +444,7 @@ def plot_difficulty_scatter(metric_map, avg_scores, optimal_scores, title, xlabe
         if sid in avg_scores and sid in optimal_scores and optimal_scores[sid] != 0:
 
             sys_optimal = optimal_scores[sid]
-            fallback_scores = load_best_observed_scores_from_log()
+            fallback_scores = load_best_observed_scores_from_log(csv_path=out_dir+"/system_trials.csv")
             if sys_optimal == -1 and fallback_scores is not None:
                 sys_optimal = fallback_scores.get(sid, 1)
 
@@ -463,31 +462,41 @@ def plot_difficulty_scatter(metric_map, avg_scores, optimal_scores, title, xlabe
     plt.ylabel("Normalized System Score", fontsize=12)
     plt.title(title, fontsize=14, pad=10)
 
-    plt.tight_layout()
+    # Fit and plot a linear regression line
+    if x and y:
+        x = np.array(x, dtype=float)
+        y = np.array(y, dtype=float)
+        coeffs = np.polyfit(x, y, 1)
+        trendline = np.poly1d(coeffs)
+        x_range = np.linspace(min(x), max(x), 100)
+        plt.plot(x_range, trendline(x_range), color='red', linestyle='--', linewidth=2)
 
     file_name = f"{xlabel.replace(' ', '_')}_vs_norm_score_scatter.png"
     plt.savefig(os.path.join(out_dir, file_name), dpi=150)
     plt.close()
 
 
-def plot_optimal_iterations(data, sys_optimal, sys_id):
+def plot_optimal_iterations(data, sys_optimal, sys_id, output_dir="app/out"):
     """
     For all distribution iterations render the box plot score of the repetitions.
 
+    :param output_dir: directory to output plots
     :param data: formatted dictionary of run data
     :param sys_optimal: optimal score for the tested system
     :param sys_id: system.id uuid
+
     :return: None
     """
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     title = "Normalized Scores vs Iterations"
-    folder_path = os.path.join(JSON_SAVE_PATH, title.replace(" ", "_").lower())
+    folder_path = os.path.join(output_dir, title.replace(" ", "_").lower())
+    print(f"saving optimal iterations to: {folder_path}")
     os.makedirs(folder_path, exist_ok=True)
 
     sorted_items = sorted(data.items())
     x_labels = [str(k) for k, _ in sorted_items]
 
-    fallback_scores = load_best_observed_scores_from_log()
+    fallback_scores = load_best_observed_scores_from_log(csv_path=output_dir+"/system_trials.csv")
     if sys_optimal == -1 and fallback_scores is not None:
         sys_optimal = fallback_scores.get(sys_id, 1)
 
@@ -814,8 +823,8 @@ def estimate_local_minimum(system, num_iterations=6000):
     return min(local_min_scores)
 
 
-def log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num):
-    output_path = JSON_SAVE_PATH + "/system_trials.csv"
+def log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num, output_dir="app/out"):
+    output_path = output_dir + "/system_trials.csv"
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
     local_min = system.local_minima

@@ -41,9 +41,9 @@ def generate_graphs(args):
              sys.agent_heterogeneity, sys.resource_heterogeneity, sys.action_combinations) = (
                 compute_system_difficulties(systems=[sys]))
             sys.generation_data = {"method": "graph", "graph_type": args.graph_type, "param": param}
+            filter_unreachable_resources(system=sys)
             sys.optimal_score, sys.optimal_coverage = calc_and_time_optimal(system=sys, init_from_opt=False)
             sys.local_minima = estimate_local_minimum(system=sys)
-            filter_unreachable_resources(system=sys)
             export_scenario_to_json(system=sys)
 
 

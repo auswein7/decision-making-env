@@ -13,7 +13,7 @@ UTILITY_FUNCS = {
 
 def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, beta=0.5, temperature=1,
               data_collector=None, trial_num=0,
-              conv_iter=float("inf"), data_key="", computing_minima=False):
+              conv_iter=float("inf"), data_key="", computing_minima=False, output_dir="app/out"):
     from app.utils.common_utils import calculate_system_convergence, log_trial_to_dataset
     """Conduct a single trial using the given system, distribution, and utility function."""
     func_args = {k: v for k, v in locals().items() if k not in EXCLUDE_KEYS}
@@ -74,6 +74,6 @@ def run_trial(system=None, distribution="", agent_util=None, max_iterations=50, 
         score = float('nan')
 
     if not computing_minima:
-        log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num)
+        log_trial_to_dataset(system, score, distribution, beta, temperature, trial_num, output_dir)
 
     return score, func_args

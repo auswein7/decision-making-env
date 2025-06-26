@@ -258,5 +258,12 @@ def read_app_properties():
         help="Directory to load systems from."
     )
 
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=str(config['DEFAULT'].get('output_dir', "")),
+        help="Directory to ouptut all data"
+    )
+
     args = parser.parse_args()
     return args
